@@ -20,7 +20,7 @@ Make the completed starter reproducible by a new maintainer without undocumented
 ## 2. Document environment variables, Google setup, email delivery and deployment.
 
 - [ ] Create or finish `docs/configuration.md` with every actual `NUXT_*` variable, runtime key, required phase/environment, safe example and purpose. Explain the intentional replacement of the original unprefixed names and the direct tooling lookup.
-- [ ] Document Google console setup, exact provider callback path, safe application return destinations, consent/test-user requirements and disabled automatic linking. Explain why a same-email collision asks users to use their existing method.
+- [ ] Document Google console setup, exact provider callback path, safe application return destinations, consent/test-user requirements and normal implicit linking with verification/trust safeguards. Explain accepted trustworthy linking and rejected unsafe collisions.
 - [ ] Document Resend sender verification, private key/sender configuration, controlled test recipient, generic request acknowledgements and background-delivery diagnostics. Use plain templates and the implemented provider only.
 - [ ] Finish `docs/deployment.md` with Vercel environment isolation, Node/pnpm settings, controlled preview hostname, migration-before-release sequence and production smoke checklist. Link `docs/operations.md` for recovery/rotation.
 - [ ] Keep documentation provider links current and applicable to the implemented versions: [Better Auth Nuxt](https://better-auth.com/docs/integrations/nuxt), [Drizzle Neon](https://orm.drizzle.team/docs/connect-neon), [Vercel Nuxt](https://vercel.com/docs/frameworks/full-stack/nuxt). Do not copy release-line-changing `@latest` commands into setup instructions.
@@ -29,7 +29,7 @@ Make the completed starter reproducible by a new maintainer without undocumented
 
 - [ ] Add a short architecture section identifying `app/lib/auth-client.ts`, server auth factory/runtime assembly, `/api/auth/[...all]`, `require-session.ts`, `/api/account`, `server/database/` and safe `shared/` validation/redirect utilities.
 - [ ] Explain that Better Auth owns identity/session state, route middleware handles navigation UX, and server handlers enforce verified identity/ownership independently. Describe `useSession(useFetch)` SSR integration and why a second session store is absent.
-- [ ] State the deliberate profile scope (display name only), verification/access policy, reset revocation, disabled automatic linking, HTTP adapter transaction setting and database-backed rate limiter.
+- [ ] State the deliberate profile scope (display name only), verification/access policy, reset revocation, normal implicit linking with verification/trust safeguards, HTTP adapter transaction setting and database-backed rate limiter.
 - [ ] Link `docs/testing.md`: pure Node unit tests, Nuxt runtime tests, live Nitro/database integration tests and real browser tests. Separate deterministic provider fixtures from mandatory real-provider deployment checks.
 - [ ] Keep this explanation short enough to use as a file map; do not add an architecture layer merely to make the documentation diagram more elaborate.
 

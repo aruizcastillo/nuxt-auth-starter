@@ -98,3 +98,9 @@ References: [Kit generate](https://orm.drizzle.team/docs/drizzle-kit-generate), 
 - Source boundaries, absence of schema/migration artifacts, ignored local notes and diff whitespace checks passed.
 
 No database, domain/auth schema, migration, role, branch or production resource was modified. No credentials were added to tracked files. The next implementation phase is Better Auth server and initial migration (Phase 3).
+
+2026-09-14 18:41 — Schema composition separated from Neon construction
+
+`server/database/schema/index.ts` owns the provider-independent `authTables` mapping and composed `relations`, preserving the existing merge order. It sits beside the generated `auth.ts` so regeneration cannot overwrite application composition. `clients/neon.ts` only constructs the Neon-backed Drizzle client using those relations. Better Auth imports its table mapping directly from the schema module; its inferred client type remains a type-only import from the concrete factory. Schema definitions, adapter settings and runtime behavior are unchanged.
+
+Validation: lint, typecheck and all nine focused unit tests passed. Drizzle Kit reported no schema changes and produced no migration. Full build/live-server tests were not repeated for this ownership-only move.

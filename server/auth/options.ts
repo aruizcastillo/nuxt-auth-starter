@@ -1,7 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from '@better-auth/drizzle-adapter/relations-v2'
-import { authTables, type createDatabase } from '../database/clients/neon'
-import type { parseAuthConfig } from '../utils/config'
+import type { createDatabase } from '../database/clients/neon'
+import { authTables } from '../database/schema'
+import type { parseAuthConfig } from './config'
 
 // Pure Better Auth factory.
 // Environment loading and database creation stay outside this function, making the auth configuration reusable from Nuxt runtime, tooling and tests.

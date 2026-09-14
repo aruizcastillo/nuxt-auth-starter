@@ -11,39 +11,6 @@
   --font-width-base: 100;
 }
 
-/* SOFT */
-[data-style='soft'] {
-  --font-base: 'Geist', sans-serif;
-  --font-title: 'Geist', sans-serif;
-
-  --font-weight-title: 600;
-  --tracking-title: -0.02em;
-
-  --font-width-base: 100;
-}
-
-/* BOLD */
-[data-style='bold'] {
-  --font-base: 'Hanken Grotesk', sans-serif;
-  --font-title: 'DM Serif Display', serif;
-
-  --font-weight-title: 600;
-  --tracking-title: 0.01em;
-
-  --font-width-base: 100;
-}
-
-/* SHARP */
-[data-style='sharp'] {
-  --font-base: 'Archivo', sans-serif;
-  --font-title: 'Space Grotesk', sans-serif;
-
-  --font-weight-title: 600;
-  --tracking-title: -0.01em;
-
-  --font-width-base: 103;
-}
-
 body {
   font-family: var(--font-base);
   font-size: var(--font-size-base);

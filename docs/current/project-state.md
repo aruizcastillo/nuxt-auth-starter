@@ -4,7 +4,7 @@
 
 2026-09-09 20:31 — Phase 1 environment and configuration
 
-Phases 1–3 are complete. Phase 3 adds the Better Auth server, generated core schema/migration and nine passing parser/live-server tests; its committed replay and development migration validation are recorded in [auth state](auth.md). The public UI shell remains the only application page functionality. Email delivery, Google and production access policy remain Phase 4 work. Timestamps use Europe/Madrid. Database infrastructure and environment conventions are in [database state](database.md).
+Phases 1–3 are complete. Phase 3 adds the Better Auth server, generated core schema/migration and a 13-test parser/boundary/live-server suite; its committed replay and development migration validation are recorded in [auth state](auth.md). The public UI shell remains the only application page functionality. Email delivery, Google and production access policy remain Phase 4 work. Timestamps use Europe/Madrid. Database infrastructure and environment conventions are in [database state](database.md).
 
 ### Stack
 
@@ -29,7 +29,7 @@ Node 24 is the supported development/CI/Vercel major (`>=24.11.0 <25`); `.nvmrc`
 ### Architecture
 
 - `app/` holds the universal application: root component, one default layout, the index page, application components, UI primitives and CSS. Nuxt's `@`/`~` aliases resolve here; `@@`/`~~` resolve to the repository root.
-- `server/database/schema/auth.ts` and `server/database/migrations/` contain the generated core auth schema and RC migration artifacts. `server/auth/options.ts` owns the auth factory; `server/auth/cli.ts` reuses it outside Nuxt. `server/utils/auth.ts` assembles parsed runtime settings and the existing typed Neon HTTP factory for `server/api/auth/[...all].ts`.
+- `server/database/schema/auth.ts` and `server/database/migrations/` contain the generated core auth schema and RC migration artifacts. `server/database/schema/index.ts` owns provider-independent table mapping and relation composition; the Neon factory only constructs the client. `server/auth/options.ts` owns the auth factory; `server/auth/cli.ts` reuses it outside Nuxt. `server/utils/auth.ts` assembles parsed runtime settings and the existing typed Neon HTTP factory for `server/api/auth/[...all].ts`.
 - `shared/` is an established boundary for deliberately shared safe code, but does not yet exist. There are no application composables, plugins, route middleware, state stores or service/repository layers.
 - `i18n/locales/` owns translation JSON. `public/` serves the favicon, robots file and static sitemap. `test/unit/` covers configuration parsing; `test/e2e/` exercises live Nitro auth with isolated fixtures under `test/helpers/`. `test/nuxt/` remains an empty runtime-test placeholder.
 - [AGENTS.md](../../AGENTS.md) and `.agents/skills/` govern implementation. `skills-lock.json` records skill provenance; roadmap files describe future work, not completed integrations.

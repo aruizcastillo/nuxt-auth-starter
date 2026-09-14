@@ -106,6 +106,8 @@ Avoid speculative repository/service/locator/container/contract layers by defaul
 
 Introduce a layer or custom solution when a concrete use case creates a meaningful boundary, isolates real complexity, or reduces demonstrated duplication. Do not build generic CRUD frameworks, generic database abstractions, custom auth frameworks, or runtime schema systems merely in anticipation of future needs.
 
+- Keep external providers and clients loosely coupled and locally owned. Integration-specific configuration, validation, and implementation should stay with that integration, while provider-independent domain logic stays outside it. Prefer simple composition over generic registries, adapters, plugin systems, or speculative abstractions.
+
 ## Framework ownership
 
 Respect conventions belonging to the tool that owns the files.

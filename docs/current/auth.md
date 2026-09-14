@@ -12,7 +12,7 @@ Sessions are stored in PostgreSQL; cookie caching is disabled for authoritative 
 
 ## Generation and migration
 
-`server/auth/cli.ts` loads dotenv and the same Phase 1 parsers, then calls the same factory outside Nuxt. Its client construction does not connect to the database. `pnpm auth:generate --yes` invokes the reviewed **auth@1.7.3** CLI (published dependencies pin Better Auth/core 1.7.3). Format generated TypeScript with `pnpm exec eslint server/database/schema/auth.ts --fix` before committing. Initial bootstrapping omitted the not-yet-generated schema; final runtime and CLI both consume the generated mapping without circular imports.
+`server/auth/cli.ts` loads dotenv and the domain-owned auth/database parsers, then calls the same factory outside Nuxt. Its client construction does not connect to the database. `pnpm auth:generate --yes` invokes the reviewed **auth@1.7.3** CLI (published dependencies pin Better Auth/core 1.7.3). Format generated TypeScript with `pnpm exec eslint server/database/schema/auth.ts --fix` before committing. Initial bootstrapping omitted the not-yet-generated schema; final runtime and CLI both consume the generated mapping without circular imports.
 
 The generated schema contains `user`, `session`, `account` and `verification`: 34 columns, four primary keys, unique user email and session token constraints, three lookup indexes, and two user foreign keys with cascade deletion. Generated token/password fields, timestamps and model names are preserved. Better Auth supplies session/account update timestamps; they intentionally have no SQL default. There are no domain/plugin tables.
 
@@ -118,3 +118,13 @@ Ownership-cleanup validation: lint, typecheck and all nine focused unit tests pa
 2026-09-14 18:43 — Resend provider location
 
 Resend configuration/validation now lives in `server/email/providers/resend.ts`, leaving `server/email/` available for provider-independent email logic in Phase 4. Imports and references were updated; no behavior or additional abstraction changed.
+
+2026-09-14 23:01 — Final Phase 3 closure after ownership refactors
+
+Reviewed the committed ownership refactor (`daeb86e`) against the Phase 3 checklist. Domain parsers, integration-owned validation, schema composition, Neon construction, Better Auth factory, CLI/runtime assembly and the mounted handler remain coherent. No application-code or schema correction was required. Exact installed versions still match the lockfile: Better Auth/adapter 1.7.3, Drizzle ORM/Kit 1.0.0-rc.4, Neon 1.1.0, Nuxt 4.5.2, test-utils 4.2.0, Vitest 4.1.11 and Zod 4.5.4.
+
+The four-minute Windows setup timeout reproduced during the cold Nitro build, before HTTP tests. The suite now explicitly uses test-utils' supported `setupTimeout: 600000` for build/startup only; individual test deadlines and all assertions remain unchanged. Installed 4.2.0 types/source confirm this is the build/setup budget. The rerun completed in 202.66 seconds with all 13 tests passing, including all four live HTTP tests against the existing allowlisted disposable branch and fixture cleanup. This supersedes the earlier incomplete live-test validation.
+
+Final validation: `pnpm lint`, `pnpm typecheck`, full `pnpm test:run` (13 passed), and `pnpm build` passed. Pinned `pnpm auth:generate --yes` followed by the documented ESLint formatting reproduced the committed schema exactly; `pnpm db:generate` reported no changes. The generated schema and migration artifacts are unchanged from the already replayed Phase 3 migration, so that recorded replay/application evidence remains valid; no new migration or development/production database mutation was needed. Public build assets contain none of the supplied private test configuration values. Existing non-fatal plugin-timing, Zod annotation and Vue/VueUse export warnings remain.
+
+Phase 3 is closed for its defined server/schema/session scope. Google runtime composition, real email delivery, verification/recovery policy and authorization helpers remain Phase 4 requirements; the intermediate starter is not production authentication policy. No UI changed. The user-owned AGENTS.md update was left untouched.

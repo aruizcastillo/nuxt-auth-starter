@@ -19,6 +19,8 @@ await setup({
   rootDir: fileURLToPath(new URL('../..', import.meta.url)),
   dev: false,
   browser: false,
+  // Cold Nitro builds can exceed the default four-minute Windows setup budget.
+  setupTimeout: 600000,
   env: {
     NUXT_DATABASE_URL: target.databaseUrl,
     NUXT_BETTER_AUTH_SECRET: randomBytes(32).toString('base64'),

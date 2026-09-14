@@ -2,281 +2,274 @@
 
 This repository is a clean, reusable Nuxt application starter.
 
-The goal is not merely to make features work. Implementations must follow the current, idiomatic approach compatible with the exact installed version of each framework and library used by the project.
+The goal is not merely to make features work. Use the current, idiomatic approach compatible with the exact installed version of each framework and library. Prefer official guidance where authoritative, verified ecosystem conventions where official guidance is silent, and custom solutions only when a concrete requirement justifies them.
 
-Use official project skills and official documentation where they are authoritative. When they are silent, non-prescriptive, or do not define application architecture, use a current, established ecosystem convention verified as compatible with the exact installed version. Use custom solutions only when a concrete requirement justifies them.
+## Core rules
 
-## Core principle
+* Prefer framework/library primitives over custom abstractions.
+* Keep architecture simple until a real requirement creates a meaningful boundary.
+* Respect the conventions of the tool that owns each concern.
+* Do not introduce speculative abstractions, dependencies, duplicated state or workarounds.
+* SSR, hydration, accessibility, security and server-side authorization must remain correct where applicable.
+* Never replace an intentional project decision merely because another valid approach exists.
 
-Prefer the current, idiomatic standard for the exact installed version of each technology. Official guidance is authoritative for its APIs, configuration, security guidance, and framework-owned behavior; established ecosystem conventions are valid for application choices that official guidance does not prescribe.
+## Versions and sources
 
-Before implementing anything version-sensitive:
+Before version-sensitive work:
 
 1. Read `package.json` and the lockfile.
-2. Identify the exact resolved package version from the lockfile or installed package. `package.json` remains authoritative for the project's declared dependency constraints.
-3. Use documentation applicable to that version or version line.
-4. Check official migration/upgrade documentation when APIs may have changed.
-5. If official guidance is silent or non-prescriptive, verify a current, established ecosystem convention against that exact version.
-6. If ambiguity remains, inspect official source code, package types, or the installed package before making assumptions.
+2. Determine the exact resolved version from the lockfile or installed package.
+3. Use official documentation for that version or version line.
+4. Check official migration/upgrade guidance when APIs may have changed.
+5. If ambiguity remains, inspect official source, package types or the installed implementation.
+6. Use ecosystem conventions only when higher-priority sources do not prescribe the choice.
 
-Never assume that examples from search results, blog posts, Stack Overflow, GitHub discussions, old docs, or model knowledge apply to the installed version.
+Source priority:
 
-## Ambiguity and decision handling
-
-If an implementation decision is unclear, underspecified, or has multiple materially different valid approaches, stop before making that decision and ask for clarification.
-
-Do not guess, invent requirements, or silently choose an architectural, product, security, data-model, UX, or dependency decision when the intended direction is not clear.
-
-You may proceed without asking only when:
-- the choice is mechanical or directly implied by the existing codebase, roadmap, documentation, or official guidance;
-- there is a single clearly established project convention;
-- the difference is trivial and does not materially affect architecture, behavior, compatibility, security, data, or maintainability.
-
-When asking:
-- explain the ambiguity briefly;
-- list the relevant options when useful;
-- state the practical trade-off;
-- wait for explicit direction before continuing that part of the implementation.
-
-Do not continue implementing around an unresolved decision if doing so could constrain or bias the eventual choice.
-
-## Source-of-truth hierarchy
-
-When sources or approaches disagree, use this priority:
-
-1. Explicit requirements in this `AGENTS.md`
-2. Official skill maintained by the framework/library
-3. Official documentation applicable to the installed version
-4. Official migration and upgrade guides
-5. Official source code and installed package types
-6. Existing intentional conventions in this repository
-7. Widely accepted current ecosystem conventions, verified for the exact installed version
-8. High-quality community skills/documentation
-9. Other community examples
+1. `AGENTS.md`
+2. Official project/library skills
+3. Official documentation for the installed version
+4. Official migration/upgrade guides
+5. Official source and installed package types
+6. Intentional repository conventions
+7. Verified current ecosystem conventions
+8. High-quality community material
+9. Other examples
 10. Agent prior knowledge
 
-Never override a documented project decision merely because another architecture is technically valid.
+Do not assume search results, blogs, Stack Overflow, GitHub discussions, old docs or model knowledge apply to the installed version.
 
-Use an ecosystem convention only when higher-priority sources do not prescribe the choice. It cannot override official API, security, compatibility, or framework-boundary guidance.
+### Drizzle prerelease
 
-## Version awareness is mandatory
+Drizzle ORM and Kit use `1.0.0-rc.4`.
 
-`package.json` is authoritative for declared dependency constraints. The lockfile or installed package is authoritative for the exact resolved version used for version-sensitive work.
+Treat stable 0.x examples as potentially obsolete. Do not introduce 0.x relations, configuration, query or migration patterns unless current 1.0 RC guidance confirms them.
 
-### Prerelease rule
+## Ambiguity
 
-Drizzle ORM and Drizzle Kit currently use `1.0.0-rc.4`.
+Ask before making a materially ambiguous architectural, security, data-model, UX or dependency decision.
 
-Treat stable Drizzle 0.x documentation and examples as potentially obsolete. Do not use Drizzle 0.x relations, configuration, query, or migration patterns unless current Drizzle 1.0 RC documentation explicitly confirms them.
+Proceed without asking when the choice is mechanical, directly implied by the existing project, explicitly prescribed by official guidance, already established as a project convention, or trivial.
 
-Never silently adapt an outdated example with a workaround.
+Do not implement around an unresolved decision if that could constrain the eventual choice.
 
-## Project documentation
+## Documentation
 
-Before planning or changing an established area, review the relevant files under `docs/current/` and `docs/deprecated/`.
+Review relevant files under `docs/current/` and `docs/deprecated/` before changing an established area.
 
-Maintain this documentation as part of the implementation work:
+Maintain:
 
-- `docs/current/` records completed architecture, implemented integrations, current project decisions, and relevant implementation history.
-- `docs/deprecated/` records superseded approaches, replaced decisions, and patterns that should not be reintroduced without explicit justification.
-- When a phase or significant architectural area is completed, create or update the relevant file in `docs/current/`.
-- When an established approach is replaced or intentionally abandoned, move or summarize the obsolete guidance in `docs/deprecated/`.
-- Keep documentation concise and topic-oriented. Update existing topic files instead of creating a new file for every small task.
-- Documentation must describe the current project state and only preserve implementation history that is useful for future maintenance.
+* `docs/current/` — implemented architecture, integrations, current decisions and useful validation evidence.
+* `docs/deprecated/` — superseded approaches and decisions that should not be reintroduced casually.
+* `docs/roadmap/` — planned work and scope.
 
-Use this minimum format for entries:
+Update existing topic files instead of creating documentation for every small task.
+
+Keep documentation focused on current project state. Preserve history only when useful for maintenance.
+
+### README
+
+`README.md` is the primary user-facing setup path, not an implementation log.
+
+Its purpose is to support:
 
 ```text
-YYYY-MM-DD HH:mm — Short title
-```  
+clean clone → install → configure → migrate → run → validate
+```
 
-## Architecture philosophy
+Use:
 
-Start simple. Add architectural layers only when a concrete requirement justifies them.
+* `README.md` for installation, configuration, database setup, development, validation and deployment.
+* `docs/current/` for implementation details, rationale and validation evidence.
+* `docs/roadmap/` for incomplete/planned work.
+
+When implementation changes the normal setup or usage path, update the README in the same work.
+
+Prefer concrete commands and required values over architectural explanation.
+
+Do not keep repository-specific development history in the README, including timestamps, phase logs, disposable branches, Neon project IDs, agent/CLI setup notes, investigation history or internal validation details.
+
+Verify README commands, environment variables and setup instructions against the actual repository before changing them.
+
+Never document planned functionality as already available.
+
+## Architecture
 
 Prefer:
 
 ```text
-framework primitive
+framework/library primitive
 → small project-specific abstraction when useful
 → application code
 ```
 
-Avoid speculative repository/service/locator/container/contract layers by default.
-
-Introduce a layer or custom solution when a concrete use case creates a meaningful boundary, isolates real complexity, or reduces demonstrated duplication. Do not build generic CRUD frameworks, generic database abstractions, custom auth frameworks, or runtime schema systems merely in anticipation of future needs.
+Add a layer only when it isolates real complexity, establishes a meaningful boundary or removes demonstrated duplication.
 
 - Keep external providers and clients loosely coupled and locally owned. Integration-specific configuration, validation, and implementation should stay with that integration, while provider-independent domain logic stays outside it. Prefer simple composition over generic registries, adapters, plugin systems, or speculative abstractions.
 
 ## Framework ownership
 
-Respect conventions belonging to the tool that owns the files.
+Respect ownership boundaries:
 
-Examples:
+* Nuxt owns routing, runtime configuration, SSR and Nitro integration.
+* Better Auth owns authentication and session state.
+* Drizzle owns relational schema, queries and migrations.
+* shadcn-vue owns generated component conventions.
+* Reka UI owns primitive component behavior.
 
-- `app/lib/utils.ts` stays there because shadcn-vue uses that convention.
-- `app/components/ui/` follows shadcn-vue conventions.
-- Nuxt runtime configuration uses `runtimeConfig`.
-- Better Auth owns authentication/session state.
-- Drizzle owns relational schema/query/migration concerns.
-- Reka UI owns primitive behavior beneath shadcn-vue components.
-
-Do not reorganize tool-owned structure merely to make it look more generically “Nuxt-like”.
+Do not reorganize tool-owned structures merely for architectural uniformity.
 
 ## Nuxt
 
 Follow Nuxt 4 conventions.
 
-Primary boundaries:
+Use the standard boundaries:
 
 ```text
-app/       client/universal application code
+app/       client/universal code
 server/    Nitro/server-only code
-shared/    code intentionally shared between app and server
+shared/    intentionally shared code
 public/    static public files
 ```
 
-Prefer Nuxt-native primitives such as `useFetch`, `useAsyncData`, `$fetch`, `useRequestFetch`, `useRuntimeConfig`, route middleware, server middleware, Nitro handlers, and Nuxt plugins.
+Prefer Nuxt-native primitives such as `$fetch`, `useFetch`, `useAsyncData`, `useRequestFetch`, `useRuntimeConfig`, middleware, Nitro handlers and plugins.
 
 SSR and hydration correctness are mandatory.
 
-Do not hide SSR problems with `<ClientOnly>`, `onMounted()`, arbitrary delays, or manual cookie/header forwarding when Nuxt or the integrated library provides an official SSR-safe solution.
+Do not hide SSR issues with `ClientOnly`, `onMounted()`, arbitrary delays or manual header/cookie forwarding when a supported SSR-safe solution exists.
 
 ## Better Auth
 
-Better Auth is the sole authentication system.
+Better Auth is the sole authentication authority.
 
-Follow the installed official Better Auth skills and documentation for the installed `1.7.x` version.
+Use guidance compatible with installed Better Auth `1.7.x`.
 
-Do not mirror Better Auth session state into Pinia by default.
+Do not:
 
-Avoid custom auth API proxies, controllers, and manual session synchronization unless a concrete, verified integration need justifies them and Better Auth remains authoritative. Do not add first-user-admin behavior, fake email verification, or client-only authorization.
+* duplicate session state in Pinia or another store;
+* build unnecessary auth proxies/controllers;
+* manually synchronize auth state;
+* introduce fake verification or client-only authorization.
 
-Server-side authorization remains authoritative.
+Server-side identity and authorization remain authoritative.
 
 ## Drizzle
 
-Use current Drizzle 1.0 RC documentation for the installed version.
+Use current Drizzle 1.0 RC APIs.
 
 Prefer typed relational schemas and current relations APIs.
 
-Do not use generic JSONB-backed domain models, runtime tables, or runtime DDL as a way to avoid deliberate schema design or as a generic data-access abstraction. A concrete, documented operational need requires an explicit reviewed design.
+Do not use generic JSONB models, runtime tables or runtime DDL to avoid deliberate schema design.
 
-Production schema evolution uses versioned migrations:
+Production schema changes use:
 
 ```text
 schema
 → drizzle-kit generate
-→ reviewed migration
+→ review migration
 → drizzle-kit migrate
 ```
 
-`push` may be used in development when appropriate, but is not the production migration workflow.
+`push` may be used when appropriate in development, but it is not the production migration workflow.
 
 ## Neon and Vercel
 
-The deployment architecture is Vercel-first and PostgreSQL is hosted on Neon.
+Deployment is Vercel-first and PostgreSQL runs on Neon.
 
-Use `@neondatabase/serverless` according to current Neon and Drizzle documentation.
+Use `@neondatabase/serverless` according to current Neon and Drizzle guidance.
 
-Do not copy long-running Node server pool assumptions into serverless code.
+Do not introduce long-running Node server or traditional pool assumptions into serverless code.
 
-## shadcn-vue and Reka UI
+Keep local, preview and production databases/secrets isolated.
 
-shadcn-vue is the component layer. Reka UI is the primitive layer.
+## Frontend stack
+
+Use shadcn-vue as the component layer and Reka UI for primitive behavior.  
 
 Use shadcn-vue conventions for generated components and Reka UI documentation/skills for primitive behavior such as `as-child`, focus management, portals, keyboard interaction, controlled state, dismissable layers, and menu/dialog/popover semantics.
 
-Maintain valid HTML and accessibility semantics.
+Maintain valid HTML and accessibility.
 
-## Tailwind CSS
+The project uses Tailwind CSS 4 with `@tailwindcss/vite`. Do not introduce Tailwind 3 configuration or legacy setup.
 
-This project uses Tailwind CSS 4 with `@tailwindcss/vite`.
+Forms use vee-validate + Zod 4. Client validation improves UX; server validation remains authoritative.
 
-Do not introduce Tailwind 3 patterns, legacy configuration, PostCSS setup, or old plugin conventions unless current Tailwind 4 documentation explicitly requires them.
+Use current `@nuxtjs/i18n 10.x` conventions.
 
-## Forms and validation
+Prefer VueUse for common reactive/browser behavior when appropriate, especially where SSR matters.
 
-Forms use vee-validate + Zod 4.
+## State and HTTP
 
-Use documentation for the installed versions. Do not copy Zod 3 patterns blindly.
+Pinia and Axios are intentionally not included in the base starter.
 
-Client validation improves UX; server validation remains mandatory for untrusted input.
+Prefer Vue/Nuxt primitives when sufficient. Use `$fetch`, `useFetch`, `useAsyncData` and `useRequestFetch` according to their intended SSR and client-side roles.
 
-## State management
+Small domain-oriented service modules are valid for imperative HTTP operations. Keep them focused on transport and API contracts, not duplicated state or application logic.
 
-Pinia is intentionally not installed.
-
-Before adding state management, verify the requirement cannot be solved cleanly by Vue reactivity, Nuxt composables, `useState`, Better Auth state, router/URL state, or Nuxt data-fetching state.
-
-## HTTP
-
-Axios is intentionally not installed.
-
-Prefer Nuxt’s native `$fetch`, `useFetch`, `useAsyncData`, and `useRequestFetch`.
-
-## i18n
-
-Use current `@nuxtjs/i18n 10.x` conventions. Do not copy configuration from older module generations without verifying compatibility.
-
-## VueUse
-
-Prefer official VueUse composables when they solve a common reactive/browser problem correctly, especially when SSR behavior is relevant.
+Add Pinia, Axios or broader HTTP abstractions only when a concrete requirement justifies them.
 
 ## Testing
 
 Use Vitest for pure unit tests and `@nuxt/test-utils` when Nuxt runtime behavior is required.
 
-Do not boot Nuxt unnecessarily for pure utilities.
+Do not boot Nuxt for pure utilities.
 
-## ESLint and TypeScript
+Use real integration boundaries when behavior depends on database access, cookies, sessions, routing or Nitro.
 
-Keep the Nuxt-generated ESLint flat configuration as the base.
+Mock external providers where appropriate, not framework/database behavior that should be tested directly.
 
-Do not replace it with a generic Vue/TypeScript ESLint setup.
+Tests must not silently pass because required integration infrastructure is unavailable.
 
-TypeScript `6.0.x` is intentional. Do not change TypeScript major versions merely because npm reports a newer `latest`.
+## TypeScript and ESLint
 
-Do not solve type errors with broad `any`, unsafe casts, `@ts-ignore`, or disabled rules unless an external defect is documented and the workaround is narrowly scoped.
+Keep Nuxt's generated ESLint flat configuration as the base.
+
+TypeScript `6.0.x` is intentional.
+
+Do not fix type problems with broad `any`, unsafe casts, `@ts-ignore` or disabled rules unless an external defect is documented and the workaround is narrowly scoped.
 
 ## Dependencies
 
 Do not add dependencies without a concrete requirement.
 
-Before adding a package:
+Before adding one:
 
-1. Check whether Nuxt/Vue or an installed dependency already solves it.
+1. Check whether Nuxt, Vue or an installed dependency already solves the need.
 2. Verify compatibility with exact installed versions.
 3. Prefer official integrations.
 4. Avoid overlapping libraries.
 
-Dependencies intentionally absent include Axios, Pinia, Prisma, Firebase, Clerk, Supabase Auth, TanStack Query, Redis, tRPC, GraphQL, and Express unless requirements change.
+Axios, Pinia, Prisma, Firebase, Clerk, Supabase Auth, TanStack Query, Redis, tRPC, GraphQL and Express are intentionally absent unless requirements change.
 
-## No workaround-first development
+## Failures and workarounds
 
 When something fails:
 
 1. Reproduce and isolate it.
-2. Verify the exact installed version.
-3. Read current official documentation.
+2. Verify exact installed versions.
+3. Read current official guidance.
 4. Check migration/upgrade notes.
-5. Inspect package types/source if needed.
-6. Implement the documented solution where one exists; where official guidance is non-prescriptive, use a verified current ecosystem convention.
-7. Only then consider a workaround or custom solution, documenting why the supported and conventional options do not meet the requirement.
+5. Inspect source/types if necessary.
+6. Use the supported solution where one exists.
+7. Otherwise use a verified current convention.
+8. Use a custom workaround only when the supported approaches do not satisfy the requirement.
 
-Do not reflexively use `<ClientOnly>`, `onMounted`, timers, `eslint-disable`, `@ts-ignore`, dependency downgrades, pnpm overrides, manual cookie forwarding, or duplicated state.
+Do not reflexively use `ClientOnly`, `onMounted`, timers, `eslint-disable`, `@ts-ignore`, dependency downgrades, pnpm overrides, manual cookie forwarding or duplicated state.
 
-## Before completing a task
+Document necessary workarounds and their reason.
 
-For changes involving external libraries:
+## Before completing work
 
-- confirm installed versions;
-- confirm the implementation against applicable official documentation;
-- verify no legacy API or pattern was introduced;
-- verify SSR/hydration where relevant;
-- verify accessibility where relevant;
-- remove unnecessary abstractions/workarounds;
-- run relevant validation.
+For framework/library changes:
+
+* confirm exact versions;
+* verify against applicable official guidance;
+* ensure no legacy patterns were introduced;
+* verify SSR/hydration where relevant;
+* verify accessibility and security where relevant;
+* remove unnecessary abstractions/workarounds;
+* update relevant documentation;
+* run appropriate validation.
 
 Default validation:
 
@@ -287,9 +280,9 @@ pnpm test:run
 pnpm build
 ```
 
-If a command cannot run or fails for unrelated reasons, report that explicitly.
+If a command cannot run or fails for unrelated reasons, report it explicitly.
 
-Never claim completion while knowingly leaving unexplained lint, type, test, or build failures.
+Never claim completion while knowingly leaving unexplained lint, type, test or build failures.
 
 ## Final rule
 

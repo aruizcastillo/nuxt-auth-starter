@@ -103,9 +103,11 @@ framework/library primitive
 → application code
 ```
 
-Add a layer only when it isolates real complexity, establishes a meaningful boundary or removes demonstrated duplication.
+Add a layer only when it isolates real complexity, establishes a meaningful boundary, or removes demonstrated duplication.
 
 - Keep external providers and clients loosely coupled and locally owned. Integration-specific configuration, validation, and implementation should stay with that integration, while provider-independent domain logic stays outside it. Prefer simple composition over generic registries, adapters, plugin systems, or speculative abstractions.
+
+- When adding or changing a feature, preserve clear ownership boundaries. A concrete integration or domain should not leak its configuration, data model, or implementation details into unrelated parts of the application. If removing or replacing one integration would require changes to unrelated code, review the boundary before proceeding.
 
 ## Framework ownership
 

@@ -10,6 +10,11 @@ Complete the server's email/password, verified-email, recovery and Google polici
 - Obtain a Resend sending key, verified sender, controlled recipient mailbox and Google web OAuth credentials. Use Phase 1's private `NUXT_*` names. These external resources were not created during planning.
 - Read the official Better Auth setup, email/password and security skills, but verify their generic examples against 1.7.3. In particular, do not copy unpinned CLI commands, obsolete hooks or old rate-limit custom storage APIs.
 
+## Boundary acceptance
+
+- [ ] Keep email/password directly configured in Better Auth, Google in its concrete provider module, and email callbacks using a simple sendEmail boundary. No registries or mirrored feature configuration.
+- [ ] Verify authenticated users/accounts, sessions and authorization with credentials+Google, credentials-only and Google-only. Credentials UI/flows may be removed manually. Removing Google must remove its settings requirements without changing core identity handling.
+
 ## 1. Enable email/password registration, sign-in and sign-out.
 
 - [ ] Complete `emailAndPassword` in `server/auth/options.ts`; use Better Auth's sign-up, sign-in and sign-out endpoints through the existing catch-all. Keep its password hashing and normalization behavior rather than writing credential handlers.
@@ -19,7 +24,7 @@ Complete the server's email/password, verified-email, recovery and Google polici
 
 ## 2. Connect real email delivery for verification and password recovery, following [Better Auth's email guidance](https://better-auth.com/docs/concepts/email).
 
-- [ ] Implement `server/utils/email.ts` as one typed Resend sender. POST to `https://api.resend.com/emails` with bearer authentication and `from`, `to`, `subject` and text content. Use a bounded timeout and no blind automatic POST retries; validate success and classify provider errors without logging request bodies. [Resend send API](https://resend.com/docs/api-reference/emails/send-email).
+- [ ] Implement `server/email/providers/resend.ts` as one typed Resend sender. POST to `https://api.resend.com/emails` with bearer authentication and `from`, `to`, `subject` and text content. Use a bounded timeout and no blind automatic POST retries; validate success and classify provider errors without logging request bodies. [Resend send API](https://resend.com/docs/api-reference/emails/send-email).
 - [ ] Connect `emailVerification.sendVerificationEmail` and `emailAndPassword.sendResetPassword` to the sender, preserving Better Auth's supplied URL. Do not generate verification/reset tokens, store duplicate tokens or replace their expiry checks. Use simple text emails; no template platform is required.
 - [ ] Connect `advanced.backgroundTasks.handler` to the current Nitro event's supported `waitUntil` lifetime. Extend `server/utils/auth.ts` to pass a request-scoped scheduler into the factory; never retain an event globally. In both email callbacks, register the actual delivery promise with that scheduler and resolve after registration. Installed 1.7.3's resend path directly awaits `sendVerificationEmail`, so the background option alone does not make every callback nonblocking. Verify the installed H3/Nitro event API and Vercel preset before deployment. [Better Auth options](https://better-auth.com/docs/reference/options), [H3 event lifetime](https://h3.dev/guide/api/h3event).
 - [ ] Ensure sending does not create an account-existence timing distinction, and scheduled failures reach sanitized operational reporting. Do not use a detached `void sendEmail()` that Vercel may terminate. Add a test proving the promise is registered with the event lifecycle and rejection is handled.
@@ -36,8 +41,8 @@ Complete the server's email/password, verified-email, recovery and Google polici
 ## 4. Configure Google OAuth credentials, callbacks and account-linking policy.
 
 - [ ] Configure a Google OAuth web application with consent/test users as applicable. Register `http://localhost:3000/api/auth/callback/google` plus the exact controlled preview and production HTTPS callbacks. Store credentials in the private config pair and reject incomplete configuration when Google is enabled. [Google integration](https://better-auth.com/docs/authentication/google).
-- [ ] Add only the Google provider to `socialProviders`. Use its documented default identity scopes; do not request offline access or unrelated Google API permissions for sign-in.
-- [ ] Set `account.accountLinking.enabled: false` as this starter's conservative policy: an existing email/password account is not silently merged with Google. Explain the same-email collision to users through safe text; explicit account-linking UI remains deferred. [Account linking](https://better-auth.com/docs/concepts/users-accounts).
+- [ ] Compose `createGoogleProvider(config)` from `server/auth/providers/google.ts` into native `socialProviders`; the module requires both credentials. Use its documented default identity scopes; do not request offline access or unrelated Google API permissions for sign-in.
+- [ ] Preserve Better Auth's normal implicit linking for trustworthy OAuth identities with its verification/trust safeguards. Do not force explicit linking or add provider fields to users. [Account linking](https://better-auth.com/docs/concepts/users-accounts).
 - [ ] Preserve Better Auth's OAuth state/cookie validation and callback checks. Handle canceled consent, provider errors, absent/unverified email claims and a same-email collision without granting unintended account access.
 - [ ] Add tests for provider configuration and linking decisions using provider-boundary fixtures. Record a separate real Google sign-in/cancel/manual callback check; mocked OAuth alone cannot prove Google console configuration.
 
@@ -52,9 +57,9 @@ Complete the server's email/password, verified-email, recovery and Google polici
 ## Phase verification
 
 - [ ] Verify real email receipt, verification, recovery and Google sign-in with controlled development accounts; log only redacted outcomes.
-- [ ] Run the new tests for verification policy, token failure cases, session revocation, provider failures and linking rejection. Update Phase 3 tests to obey verified-email sign-in.
+- [ ] Run the new tests for verification policy, token failure cases, session revocation, provider failures and accepted/rejected linking decisions. Update Phase 3 tests to obey verified-email sign-in.
 - [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:run` and `pnpm build`. Missing provider access remains an explicit incomplete manual check.
 
 ## Expected state after completion
 
-Authentication methods and server identity policy work independently of UI. Emails have a reliable serverless lifecycle, reset revokes sessions, Google cannot silently link accounts, and policy tests accompany the implementation.
+Authentication methods and server identity policy work independently of UI. Emails have a reliable serverless lifecycle, reset revokes sessions, trustworthy OAuth identities link through Better Auth’s normal account model, and policy tests accompany the implementation.

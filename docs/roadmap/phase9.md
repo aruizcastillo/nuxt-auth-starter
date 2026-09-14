@@ -37,7 +37,7 @@ Deploy the validated starter through an isolated preview to production, with con
 
 - [ ] Deploy the tested commit to the isolated controlled preview, verify correct server routes/runtime and run the browser smoke suite against that URL with controlled accounts.
 - [ ] Manually complete registration → real verification email → sign-in → account refresh → profile edit → sign-out, then password recovery → new sign-in. Verify reset invalidates earlier sessions.
-- [ ] Complete real Google sign-in, canceled consent and same-email collision checks. Confirm the configured disabled-linking policy behaves as documented.
+- [ ] Complete real Google sign-in, canceled consent and same-email collision checks. Confirm the normal implicit-linking policy with verification/trust safeguards behaves as documented.
 - [ ] Test anonymous/unverified account rejection, cross-user selectors, safe redirects, English/Spanish rendering, keyboard flows and no hydration warnings. Inspect HTTPS cookie and no-store headers through the deployed delivery path.
 - [ ] Verify email background work completes after HTTP response under Vercel, and provider failure is visible through sanitized reporting. Recheck shared rate limits across separate function requests.
 

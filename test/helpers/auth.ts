@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 import { createDatabase } from '../../server/database/clients/neon'
 import { account, session, user } from '../../server/database/schema/auth'
-import { parseDatabaseConfig } from '../../server/utils/config'
+import { parseDatabaseConfig } from '../../server/database/config'
 
 // Explicitly allow only the disposable branch verified through Neon metadata.
 // Re-provisioning this branch requires reviewing the new endpoint here.

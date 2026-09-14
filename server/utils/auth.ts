@@ -2,7 +2,8 @@ import type { H3Event } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import { createAuth } from '../auth/options'
 import { createDatabase } from '../database/clients/neon'
-import { parseAuthConfig, parseDatabaseConfig } from './config'
+import { parseAuthConfig } from '../auth/config'
+import { parseDatabaseConfig } from '../database/config'
 
 export function useServerAuth(event: H3Event) {
   const config = useRuntimeConfig(event)

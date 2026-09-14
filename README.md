@@ -97,8 +97,13 @@ The following pairs are reserved for Phase 4 and should remain blank for the cur
 
 | Variables | When required |
 | --- | --- |
-| `NUXT_GOOGLE_CLIENT_ID`, `NUXT_GOOGLE_CLIENT_SECRET` | Both become required when Google OAuth is implemented and enabled. Never configure only one. |
-| `NUXT_RESEND_API_KEY`, `NUXT_EMAIL_FROM` | Both become required when email delivery is implemented and enabled. `NUXT_EMAIL_FROM` must be a verified sender in `address@example.com` or `App <address@example.com>` form. |
+| `NUXT_DATABASE_URL` | PostgreSQL/Neon URL (`postgres://` or `postgresql://` with a host). Required when Nuxt server database functionality is used; mirrors pooled `DATABASE_URL`. |
+| `NUXT_BETTER_AUTH_SECRET` | Independently generated random secret, at least 32 characters; required when auth initializes. Generate with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. Validation checks length, not randomness. |
+| `NUXT_BETTER_AUTH_URL` | Canonical app origin; no credentials, path other than `/`, query or fragment. HTTPS required except `http://localhost` during development. |
+| `NUXT_GOOGLE_CLIENT_ID`, `NUXT_GOOGLE_CLIENT_SECRET` | Required by `server/auth/providers/google.ts` when composed into Better Auth (Phase 4). |
+| `NUXT_RESEND_API_KEY`, `NUXT_EMAIL_FROM` | Required by `server/email/providers/resend.ts` when delivery is initialized (Phase 4). Sender is an email address or `App <verified@example.com>`. |
+
+`server/database/config.ts` owns `parseDatabaseConfig`; `server/auth/config.ts` owns `parseAuthConfig`. Each domain parses its own schema and reuses only sanitized error formatting from `server/utils/config-error.ts`. Google owns its strict provider configuration in `server/auth/providers/google.ts`; Resend owns `parseResendConfig` in `server/email/providers/resend.ts`. The server auth utility passes `useRuntimeConfig(event)` to the relevant parsers before assembling Better Auth; auth callers also pass `import.meta.dev`. Each parser checks only its functionality. Errors identify variable names without including values or raw Zod errors. No startup plugin validates unused services, and builds and the public homepage require no credentials. The parsers themselves do not establish connections or initialize Better Auth.
 
 All `NUXT_*` settings are private Nuxt runtime configuration. For local `dev`, `build`, and `preview`, Nuxt loads `.env`. A standalone built server receives these values from its process environment.
 

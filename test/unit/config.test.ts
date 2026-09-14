@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseAuthConfig, parseDatabaseConfig, parseEmailConfig } from '../../server/utils/config'
+import { parseAuthConfig } from '../../server/auth/config'
+import { parseDatabaseConfig } from '../../server/database/config'
 
 const auth = { betterAuthSecret: 'a'.repeat(32), betterAuthUrl: 'https://app.example.test' }
 
@@ -26,20 +27,9 @@ describe('private configuration', () => {
     }
   })
 
-  it('permits absent provider pairs and rejects partial Google credentials', () => {
-    expect(parseAuthConfig(auth).googleClientId).toBe('')
-    expect(parseAuthConfig({ ...auth, googleClientId: 'id', googleClientSecret: 'secret' }).googleClientId).toBe('id')
-    expect(() => parseAuthConfig({ ...auth, googleClientId: 'id' })).toThrow('NUXT_GOOGLE_CLIENT_SECRET')
-    expect(() => parseAuthConfig({ ...auth, googleClientSecret: 'secret' })).toThrow('NUXT_GOOGLE_CLIENT_ID')
-  })
-
-  it('validates paired email settings and plain/named sender addresses', () => {
-    expect(parseEmailConfig({})).toEqual({ resendApiKey: '', emailFrom: '' })
-    for (const emailFrom of ['sender@example.test', 'Starter <sender@example.test>']) {
-      expect(parseEmailConfig({ resendApiKey: 'key', emailFrom }).emailFrom).toBe(emailFrom)
-    }
-    expect(() => parseEmailConfig({ resendApiKey: 'key' })).toThrow('NUXT_EMAIL_FROM')
-    expect(() => parseEmailConfig({ emailFrom: 'sender@example.test' })).toThrow('NUXT_RESEND_API_KEY')
-    expect(() => parseEmailConfig({ resendApiKey: 'key', emailFrom: 'invalid' })).toThrow('NUXT_EMAIL_FROM')
+  it('ignores optional integration settings, including incomplete or invalid leftovers', () => {
+    expect(parseAuthConfig(auth)).toEqual(auth)
+    expect(parseAuthConfig({ ...auth, googleClientId: 'id', resendApiKey: 'key', emailFrom: 123 })).toEqual(auth)
+    expect(parseAuthConfig({ ...auth, googleClientSecret: false })).toEqual(auth)
   })
 })

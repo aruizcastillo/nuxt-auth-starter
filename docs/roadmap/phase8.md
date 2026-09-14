@@ -29,7 +29,7 @@ Verify production security assumptions and document manageable operational recov
 ## 3. Check account enumeration, OAuth linking and session-revocation behavior.
 
 - [ ] Compare existing/non-existing addresses for registration, sign-in, resend and recovery at the HTTP boundary, including status/body and gross timing differences. Confirm slow email delivery does not determine response timing. Do not promise mathematically identical network timing.
-- [ ] Verify same-email Google collision is rejected under the selected disabled-linking policy, provider identity is not synthesized, and unverified sessions cannot access `/api/account`.
+- [ ] Verify trustworthy same-email OAuth identities link normally while unsafe linking is rejected, provider identity is not synthesized, and unverified sessions cannot access `/api/account`.
 - [ ] Confirm sign-out invalidates its session, reset invalidates all prior sessions, and expired cookies cannot read account data. Keep cookie caching off unless a later explicit requirement justifies and tests its revocation delay. [Session management](https://better-auth.com/docs/concepts/session-management).
 - [ ] Add regression cases for every discovered gap to the Phase 7 suite; do not treat a manual audit as a substitute for repeatable authorization tests.
 

@@ -33,7 +33,7 @@ Version baseline: Nuxt **4.5.2**, Better Auth/adapter **1.7.3**, Drizzle ORM/Kit
 
 ## Phase 4 — Authentication methods and server authorization · Required
 
-- [ ] Enable email/password registration, sign-in and sign-out.
+- [x] Enable email/password registration, sign-in and sign-out.
 - [ ] Connect real email delivery for verification and password recovery, following [Better Auth’s email guidance](https://better-auth.com/docs/concepts/email).
 - [ ] Define verified-email access and password-reset session behavior.
 - [ ] Configure Google OAuth credentials, callbacks and account-linking policy.

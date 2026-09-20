@@ -16,8 +16,11 @@ export function createAuth(settings: ReturnType<typeof parseAuthConfig>, databas
     baseURL: settings.betterAuthUrl,
     secret: settings.betterAuthSecret,
     basePath: '/api/auth',
-    // Phase 4 connects verification delivery and Google policy/credentials.
-    emailAndPassword: { enabled: true },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
+    },
     // Cookie caching is explicitly disabled so session reads use the database.
     session: { cookieCache: { enabled: false } },
   })

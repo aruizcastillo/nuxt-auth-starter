@@ -10,17 +10,25 @@ describe('Better Auth method boundaries', () => {
     { credentials: true, google: true },
     { credentials: true, google: false },
     { credentials: false, google: true },
+    { credentials: undefined, google: true },
   ])('initializes and reads an anonymous session with credentials=$credentials Google=$google', async ({ credentials, google }) => {
     const baseline = createAuth(parseAuthConfig({
       betterAuthSecret: 'boundary-test-secret-with-at-least-32-characters',
       betterAuthUrl: 'https://auth.example.test',
     }), createDatabase('postgresql://unused:unused@localhost/unused'))
 
+    const { emailAndPassword: configuredCredentials, ...coreOptions } = baseline.options
+    expect(configuredCredentials).toEqual({
+      enabled: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
+    })
+
     // Model a derived project's direct edits to Better Auth options, without
     // introducing application feature flags or a second configuration API.
     const auth = betterAuth({
-      ...baseline.options,
-      emailAndPassword: { enabled: credentials },
+      ...coreOptions,
+      ...(credentials === undefined ? {} : { emailAndPassword: { enabled: credentials } }),
       ...(google ? { socialProviders: createGoogleProvider({ googleClientId: 'test-id', googleClientSecret: 'test-secret' }) } : {}),
     })
     const context = await auth.$context

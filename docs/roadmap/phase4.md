@@ -17,10 +17,12 @@ Complete the server's email/password, verified-email, recovery and Google polici
 
 ## 1. Enable email/password registration, sign-in and sign-out.
 
-- [ ] Complete `emailAndPassword` in `server/auth/options.ts`; use Better Auth's sign-up, sign-in and sign-out endpoints through the existing catch-all. Keep its password hashing and normalization behavior rather than writing credential handlers.
-- [ ] Set an explicit password length policy matching the documented supported bounds, initially 8–128 characters. Share these limits in a small safe constants module only when client schemas need them in Phase 6; never trim or silently transform passwords. [Email/password API](https://better-auth.com/docs/authentication/email-password).
-- [ ] Require name and email on registration. Add request tests for invalid email, missing name, password boundaries, duplicate registration, wrong password and repeated sign-out; verify no plaintext password is persisted or returned.
-- [ ] Verify the issued cookie, revoked session and error response via real HTTP requests. Keep generic credential errors; do not expose whether an email exists through custom messages.
+- [x] Complete `emailAndPassword` in `server/auth/options.ts`; use Better Auth's sign-up, sign-in and sign-out endpoints through the existing catch-all. Keep its password hashing and normalization behavior rather than writing credential handlers.
+- [x] Set an explicit password length policy matching the documented supported bounds, initially 8–128 characters. Share these limits in a small safe constants module only when client schemas need them in Phase 6; never trim or silently transform passwords. [Email/password API](https://better-auth.com/docs/authentication/email-password).
+- [x] Require name and email on registration. Add request tests for invalid email, missing name, password boundaries, duplicate registration, wrong password and repeated sign-out; verify no plaintext password is persisted or returned.
+- [x] Verify the issued cookie, revoked session and error response via real HTTP requests. Keep generic credential errors; do not expose whether an email exists through custom messages.
+
+Phase 4.1 request coverage and native behavior caveats are recorded in [current auth state](../current/auth.md#credential-request-coverage-phase-41). Duplicate registration retains the native 422 response; sign-in errors are generic. Missing names are rejected, with no additional nonempty-name policy. Later Phase 4 sections remain incomplete.
 
 ## 2. Connect real email delivery for verification and password recovery, following [Better Auth's email guidance](https://better-auth.com/docs/concepts/email).
 

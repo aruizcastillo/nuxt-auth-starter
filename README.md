@@ -159,6 +159,8 @@ Set `NUXT_BETTER_AUTH_SECRET` and `NUXT_BETTER_AUTH_URL`, configure the database
 
 This is the completed server foundation from Phase 3, not a finished authentication product. Basic email/password behavior exists for backend lifecycle validation, but there is no auth UI, email delivery, verified-email access policy, recovery flow, Google provider, protected application route, or production hardening yet. Do not advertise or deploy those Phase 4+ capabilities as complete. See [current auth state](docs/current/auth.md) and [Phase 4](docs/roadmap/phase4.md).
 
+The default password policy is 8–128 characters. It follows modern password-security guidance by supporting long passphrases, avoiding composition rules, preserving whitespace, and not silently truncating passwords. Applications with stricter assurance requirements may increase the minimum length or require MFA.
+
 ## Development and validation commands
 
 | Command | Purpose |

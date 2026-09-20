@@ -3,6 +3,5 @@
   "navigation": { "main": "Main navigation" },
   "common": { "language": "Language", "style": "Style", "theme": "Theme" },
   "languages": { "en": "English", "es": "Spanish" },
-  "style": { "soft": "Soft", "bold": "Bold", "sharp": "Sharp" },
   "theme": { "system": "System", "light": "Light", "dark": "Dark" }
 }

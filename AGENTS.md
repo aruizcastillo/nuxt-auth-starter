@@ -55,17 +55,17 @@ Do not implement around an unresolved decision if that could constrain the event
 
 ## Documentation
 
-Review relevant files under `docs/current/` and `docs/deprecated/` before changing an established area.
+Review the relevant topic documents in `docs/` and architectural decisions in `docs/decisions/` before changing an established area.
 
 Maintain:
 
-* `docs/current/` — implemented architecture, integrations, current decisions and useful validation evidence.
-* `docs/deprecated/` — superseded approaches and decisions that should not be reintroduced casually.
-* `docs/roadmap/` — planned work and scope.
+* `docs/*.md` describes current behavior.
+* `docs/roadmap/*` describes future work.
+* `docs/decisions/*` explains durable architectural decisions and constraints.
 
 Update existing topic files instead of creating documentation for every small task.
 
-Keep documentation focused on current project state. Preserve history only when useful for maintenance.
+Keep each fact in one canonical home and link to it from other documents. Remove completed phase summaries, migration checkpoints and obsolete implementation notes; Git preserves their history. Retain important architectural reasoning in ADRs, not historical logs.
 
 ### README
 
@@ -80,7 +80,8 @@ clean clone → install → configure → migrate → run → validate
 Use:
 
 * `README.md` for installation, configuration, database setup, development, validation and deployment.
-* `docs/current/` for implementation details, rationale and validation evidence.
+* `docs/*.md` for current implementation details and useful validation procedures.
+* `docs/decisions/` for architectural rationale.
 * `docs/roadmap/` for incomplete/planned work.
 
 When implementation changes the normal setup or usage path, update the README in the same work.

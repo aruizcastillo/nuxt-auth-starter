@@ -3,6 +3,5 @@
   "navigation": { "main": "Navegación principal" },
   "common": { "language": "Idioma", "style": "Estilo", "theme": "Tema" },
   "languages": { "en": "Inglés", "es": "Español" },
-  "style": { "soft": "Suave", "bold": "Marcado", "sharp": "Afilado" },
   "theme": { "system": "Sistema", "light": "Claro", "dark": "Oscuro" }
 }

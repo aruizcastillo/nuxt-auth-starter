@@ -110,6 +110,8 @@ Add a layer only when it isolates real complexity, establishes a meaningful boun
 
 - When adding or changing a feature, preserve clear ownership boundaries. A concrete integration or domain should not leak its configuration, data model, or implementation details into unrelated parts of the application. If removing or replacing one integration would require changes to unrelated code, review the boundary before proceeding.
 
+- Keep provider-specific implementations inside the module that owns the integration, for example `database/providers/neon.ts`, `email/providers/resend.ts`, or `auth/providers/google.ts`. Unrelated application code should depend on the owning module boundary rather than importing provider implementations directly when a simple boundary is sufficient.
+
 ## Framework ownership
 
 Respect ownership boundaries:
@@ -177,11 +179,13 @@ schema
 
 ## Neon and Vercel
 
-Deployment is Vercel-first and PostgreSQL runs on Neon.
+The reference deployment architecture is Vercel-first, with Neon as the default PostgreSQL provider.
 
-Use `@neondatabase/serverless` according to current Neon and Drizzle guidance.
+PostgreSQL and Drizzle define the database contract. Keep Neon-specific client behavior and operational workflow isolated within its provider integration.
 
-Do not introduce long-running Node server or traditional pool assumptions into serverless code.
+The reference implementation uses `@neondatabase/serverless` with the Neon HTTP driver for stateless, serverless-friendly database access. Review driver-specific capabilities, including transaction behavior, when replacing the database client.
+
+Do not introduce long-running Node server or traditional pool assumptions into the reference serverless implementation.
 
 Keep local, preview and production databases/secrets isolated.
 

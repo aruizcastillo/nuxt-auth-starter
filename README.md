@@ -2,28 +2,34 @@
 
 ## Project overview
 
-A reusable Nuxt 4 starter with a public application UI and a server-side Better Auth foundation backed by Drizzle and Neon Postgres.
+A reusable Nuxt 4 starter with a public application shell and server-side authentication powered by Better Auth, Drizzle and PostgreSQL.
 
-The current implementation includes the Better Auth server endpoint, core auth schema, and reviewed initial migration. It does not yet include sign-in/account pages, email verification or password-recovery delivery, Google OAuth, protected application pages, or a production-ready authentication policy. Those remain planned work in the [roadmap](docs/roadmap/roadmap.md).
+Neon is the default PostgreSQL provider, but the database layer is structured so another PostgreSQL client can be used without changing the schema, migrations or authentication model.
+
+The current implementation includes the Better Auth server endpoint, auth schema and initial migration.
+
+Sign-in and account pages, email verification, password recovery, Google OAuth, protected application pages and the final authentication policy are still being implemented. Those remain planned work in the [roadmap](docs/roadmap/roadmap.md).
+
+The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n. English and Spanish are currently configured.
 
 ## Requirements
 
-* Node.js `>=24.11.0 <25`
-* pnpm `12`
-* A Neon account with an isolated Postgres development branch/database
+- Node.js 24
+- pnpm 12
+- PostgreSQL
+
+> The included database client and setup workflow use Neon. See [Using another PostgreSQL provider](#using-another-postgresql-provider) if you want to use a different PostgreSQL provider.
 
 Tested with Node `24.21.0` and pnpm `12.3.4`.
 
-> `.nvmrc` pins the tested Node version, while the `packageManager` field in `package.json` pins the project's pnpm version for reproducible installs.
-
-With nvm:
+Install Node.js if needed. With nvm:
 
 ```sh
 nvm install 24
 nvm use 24
 ```
 
-Install the tested pnpm version:
+Install pnpm if needed:
 
 ```sh
 npm install --global pnpm@12.3.4
@@ -31,20 +37,18 @@ npm install --global pnpm@12.3.4
 
 ## Quick start
 
-1. Clone the repository and enter it:
+1. Clone the repository:
 
    ```sh
    git clone https://github.com/aruizcastillo/nuxt-auth-starter.git
    cd nuxt-auth-starter
    ```
 
-2. Install exactly the locked dependency graph:
+2. Install dependencies:
 
    ```sh
-   pnpm install --frozen-lockfile
+   pnpm install
    ```
-
-   Installation also runs `nuxt prepare` through the `postinstall` script.
 
 3. Create the local environment file:
 
@@ -52,9 +56,9 @@ npm install --global pnpm@12.3.4
    cp .env.example .env
    ```
 
-4. Create or select an isolated development database in Neon, then complete `.env` as described in [Environment configuration](#environment-configuration) and [Database setup](#database-setup).
+4. Configure PostgreSQL and Better Auth as described in [Environment configuration](#environment-configuration) and [Database setup](#database-setup).
 
-5. Apply the committed migrations:
+5. Apply the migrations:
 
    ```sh
    pnpm db:migrate
@@ -68,117 +72,135 @@ npm install --global pnpm@12.3.4
 
 7. Open `http://localhost:3000`.
 
-The public pages can start with empty service values, but the database and auth endpoint are not usable until the required local values below are configured and the migration is applied.
-
 ## Environment configuration
 
-Keep local secrets in `.env`; environment files other than `.env.example` are ignored by Git. Do not commit credentials.
+Local secrets belong in `.env`. Environment files other than `.env.example` are ignored by Git.
 
-The minimal usable local database/auth setup requires `NUXT_DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NUXT_BETTER_AUTH_SECRET`, and `NUXT_BETTER_AUTH_URL`. The template contains these database and auth settings:
+The current database and auth setup uses:
 
-| Variable | Requirement |
+| Variable | Purpose |
 | --- | --- |
-| `NUXT_DATABASE_URL` | Required for server database/auth requests. Use the Neon pooled connection string. |
-| `DATABASE_URL` | Not read by the application or Drizzle Kit. Configure it when using Neon tooling that expects the standard pooled URL, and keep it identical to `NUXT_DATABASE_URL`. |
-| `DATABASE_URL_UNPOOLED` | Required by Drizzle Kit for migrations and other database commands. Use the direct connection string for the same database. |
-| `NEON_BRANCH` | Not read by the application or migration command. Set it to the selected branch name when using target-aware Neon/test tooling. |
-| `NUXT_BETTER_AUTH_SECRET` | Required when the auth endpoint initializes. Use an independently generated random secret of at least 32 characters. |
-| `NUXT_BETTER_AUTH_URL` | Required when the auth endpoint initializes. Use `http://localhost:3000` locally. Non-local origins must use HTTPS. |
+| `NUXT_DATABASE_URL` | Runtime database connection used by Nuxt and Better Auth. Use the pooled connection string. |
+| `DATABASE_URL` | Standard pooled Neon URL used by Neon tooling. Keep it aligned with NUXT_DATABASE_URL. |
+| `DATABASE_URL_UNPOOLED` | Direct database connection used by Drizzle Kit for migrations and database commands. |
+| `NEON_BRANCH` | Selected Neon branch used by Neon/test tooling. |
+| `NUXT_BETTER_AUTH_SECRET` | Better Auth secret. Use a random value of at least 32 characters. |
+| `NUXT_BETTER_AUTH_URL` | Application origin used by Better Auth. Use `http://localhost:3000` locally. |
 
-Generate a secure Better Auth secret:
+Generate a Better Auth secret with:
 
 ```sh
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
 ```
 
-Set the result as `NUXT_BETTER_AUTH_SECRET`.
+The following integrations are planned but not connected yet:
 
-The following pairs are reserved for Phase 4 and should remain blank for the current implementation:
-
-| Variables | When required |
+| Variables | Purpose |
 | --- | --- |
-| `NUXT_DATABASE_URL` | PostgreSQL/Neon URL (`postgres://` or `postgresql://` with a host). Required when Nuxt server database functionality is used; mirrors pooled `DATABASE_URL`. |
-| `NUXT_BETTER_AUTH_SECRET` | Independently generated random secret, at least 32 characters; required when auth initializes. Generate with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. Validation checks length, not randomness. |
-| `NUXT_BETTER_AUTH_URL` | Canonical app origin; no credentials, path other than `/`, query or fragment. HTTPS required except `http://localhost` during development. |
-| `NUXT_GOOGLE_CLIENT_ID`, `NUXT_GOOGLE_CLIENT_SECRET` | Required by `server/auth/providers/google.ts` when composed into Better Auth (Phase 4). |
-| `NUXT_RESEND_API_KEY`, `NUXT_EMAIL_FROM` | Required by `server/email/providers/resend.ts` when delivery is initialized (Phase 4). Sender is an email address or `App <verified@example.com>`. |
+| `NUXT_GOOGLE_CLIENT_ID`, `NUXT_GOOGLE_CLIENT_SECRET` | Google OAuth credentials. |
+| `NUXT_RESEND_API_KEY`, `NUXT_EMAIL_FROM` | Resend credentials and sender for verification and password recovery emails. |
 
-`server/database/config.ts` owns `parseDatabaseConfig`; `server/auth/config.ts` owns `parseAuthConfig`. Each domain parses its own schema and reuses only sanitized error formatting from `server/utils/config-error.ts`. Google owns its strict provider configuration in `server/auth/providers/google.ts`; Resend owns `parseResendConfig` in `server/email/providers/resend.ts`. The server auth utility passes `useRuntimeConfig(event)` to the relevant parsers before assembling Better Auth; auth callers also pass `import.meta.dev`. Each parser checks only its functionality. Errors identify variable names without including values or raw Zod errors. No startup plugin validates unused services, and builds and the public homepage require no credentials. The parsers themselves do not establish connections or initialize Better Auth.
-
-All `NUXT_*` settings are private Nuxt runtime configuration. For local `dev`, `build`, and `preview`, Nuxt loads `.env`. A standalone built server receives these values from its process environment.
+See [authentication](docs/authentication.md) for configuration details and [deployment](docs/deployment.md) for environment isolation.
 
 ## Database setup
 
-1. Create a project in the [Neon dashboard](https://console.neon.tech/) and create or select an isolated development branch.
+PostgreSQL is required. Neon is only the reference provider included with the starter.
 
-2. Authenticate the local Neon CLI and link this repository to the project:
+### Neon
 
-```sh
-pnpm exec neon auth
-pnpm exec neon link
-```
+1. Create a project in the [Neon dashboard](https://console.neon.tech/) and create or select a development branch.
+
+2. Authenticate the Neon CLI and link the repository:
+
+   ```sh
+   pnpm exec neon auth
+   pnpm exec neon link
+   ```
 
 3. Select the development branch:
 
-```sh
-pnpm exec neon checkout dev
+   ```sh
+   pnpm exec neon checkout dev
+   ```
+
+4. Pull the Neon environment variables:
+
+   ```sh
+   pnpm exec neon env pull --file .env --env DATABASE_URL --env DATABASE_URL_UNPOOLED --env NEON_BRANCH
+   ```
+
+5. Copy the pooled `DATABASE_URL` value to `NUXT_DATABASE_URL`.
+
+6. Apply the migrations:
+
+   ```sh
+   pnpm db:migrate
+   ```
+
+Drizzle Kit uses `DATABASE_URL_UNPOOLED`, while the Nuxt server uses `NUXT_DATABASE_URL`.
+
+For schema changes, follow the [database migration procedure](docs/database.md#migration-procedure) and [versioned migration policy](docs/decisions/004-versioned-migrations.md).
+
+### Using another PostgreSQL provider
+
+Neon is the reference implementation, not a requirement of the application architecture.
+
+To use another PostgreSQL provider:
+
+1. Replace `server/database/providers/neon.ts` with a Drizzle-compatible PostgreSQL client for your runtime.
+2. Update `server/database/index.ts` to export the new `createDatabase` implementation.
+3. Provide the corresponding runtime and migration connections through `NUXT_DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
+4. Review driver-specific behavior, including the Better Auth adapter's `transaction: false` setting.
+5. Adapt provider-specific tooling, deployment and test setup.
+
+The schema, relations, migrations and Better Auth PostgreSQL integration should remain unchanged.
+
+The current Neon implementation uses the HTTP driver for stateless, serverless-friendly database access. See [ADR 002](docs/decisions/002-neon-http.md) for the reasoning and transaction constraints.
+
+## Authentication setup
+
+Set:
+
+```text
+NUXT_BETTER_AUTH_SECRET
+NUXT_BETTER_AUTH_URL
+NUXT_DATABASE_URL
 ```
 
-4. Pull the database environment variables into `.env`:
-
-```sh
-pnpm exec neon env pull --file .env --env DATABASE_URL --env DATABASE_URL_UNPOOLED --env NEON_BRANCH
-```
-
-The pull preserves the other entries in `.env`.
-
-Copy the pooled `DATABASE_URL` value to `NUXT_DATABASE_URL`. Neon does not manage this Nuxt-specific variable.
-
-Ensure `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and `NUXT_DATABASE_URL` reference the intended Neon database and branch before applying migrations.
-
-5. Apply the committed migrations:
+and configure the migration database connection before running:
 
 ```sh
 pnpm db:migrate
 ```
 
-Drizzle Kit reads `DATABASE_URL_UNPOOLED` directly from `.env`, while the Nuxt server uses `NUXT_DATABASE_URL`.
+Better Auth is exposed at:
 
-For future schema changes, use the reviewed workflow:
+```text
+/api/auth
+```
 
-1. Change the typed schema under `server/database/schema/`.
-2. Run `pnpm db:generate`.
-3. Review and commit every generated SQL and metadata artifact.
-4. Run `pnpm db:migrate` against the explicitly selected target.
+and stores users, sessions, accounts and verification records in PostgreSQL.
 
-Do not rewrite an applied migration. `pnpm db:push` is for appropriate development use only and is not the production migration workflow. See [database documentation](docs/current/database.md#migration-procedure) for operational detail.
+See [authentication](docs/authentication.md) for the currently implemented behavior and [Phase 4](docs/roadmap/roadmap.md#phase-4) for verification, recovery, email delivery and the remaining authentication work.
 
-## Authentication setup
-
-Set `NUXT_BETTER_AUTH_SECRET` and `NUXT_BETTER_AUTH_URL`, configure the database variables, and apply the migration. The Better Auth handler is then mounted at `/api/auth` and stores users, sessions, accounts, and verification records in Postgres.
-
-This is the completed server foundation from Phase 3, not a finished authentication product. Basic email/password behavior exists for backend lifecycle validation, but there is no auth UI, email delivery, verified-email access policy, recovery flow, Google provider, protected application route, or production hardening yet. Do not advertise or deploy those Phase 4+ capabilities as complete. See [current auth state](docs/current/auth.md) and [Phase 4](docs/roadmap/phase4.md).
-
-The default password policy is 8–128 characters. It follows modern password-security guidance by supporting long passphrases, avoiding composition rules, preserving whitespace, and not silently truncating passwords. Applications with stricter assurance requirements may increase the minimum length or require MFA.
-
-## Development and validation commands
+## Development commands
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm dev` | Start the Nuxt development server. |
-| `pnpm lint` | Run ESLint across the repository. |
+| `pnpm dev` | Start the development server. |
+| `pnpm lint` | Run ESLint. |
 | `pnpm typecheck` | Run Nuxt/Vue TypeScript checks. |
-| `pnpm exec vitest run --project unit` | Run database-independent configuration tests. |
 | `pnpm test` | Run Vitest in watch mode. |
-| `pnpm test:run` | Run all tests once, including live database auth tests. See the constraint below. |
-| `pnpm build` | Create the production build. |
-| `pnpm preview` | Preview a completed production build locally. |
-| `pnpm db:generate` | Generate a migration from schema changes. |
-| `pnpm db:migrate` | Apply committed migrations using `DATABASE_URL_UNPOOLED`. |
-| `pnpm db:push` | Push schema changes directly for deliberate development-only use. |
-| `pnpm db:studio` | Open Drizzle Studio for the configured database. |
+| `pnpm test:run` | Run the complete test suite once. |
+| `pnpm exec vitest run --project unit` | Run database-independent unit tests. |
+| `pnpm build` | Create a production build. |
+| `pnpm preview` | Preview the production build locally. |
+| `pnpm db:generate` | Generate migrations from schema changes. |
+| `pnpm db:migrate` | Apply committed migrations. |
+| `pnpm db:push` | Push schema changes directly for development use. |
+| `pnpm db:studio` | Open Drizzle Studio. |
 
-Run the reproducible local checks with:
+Standard local validation:
 
 ```sh
 pnpm lint
@@ -187,22 +209,35 @@ pnpm exec vitest run --project unit
 pnpm build
 ```
 
-`pnpm test:run` includes live auth tests that create and remove accounts. Before running it, provision a separate disposable Neon test branch, migrate it, configure its test environment values, and make sure `test/helpers/auth.ts` explicitly recognizes that exact target. The guard intentionally rejects arbitrary database URLs, so a fresh clone cannot enable the live suite through environment configuration alone. Never point it at development or production. See the [test-target procedure](docs/current/auth.md#test-target-and-commands) for the required variables and commands.
-
-There is currently no Markdown-specific validation script.
+`pnpm test:run` includes live database auth tests that create and remove test accounts. Configure a disposable test target before running it; see [testing](docs/testing.md#test-target-and-commands).
 
 ## Deployment
 
-`pnpm build` produces the current server build, and `pnpm preview` runs it locally. Vercel with Neon is the intended hosting path, but a verified production deployment workflow is not yet complete.
+Build the application with:
 
-Vercel deployments must configure the required variables separately for Development, Preview, and Production, using isolated database targets, independent auth secrets, and the correct canonical HTTPS `NUXT_BETTER_AUTH_URL` for each environment. See [Vercel environment variables](https://vercel.com/docs/environment-variables).
+```sh
+pnpm build
+```
 
-The controlled production migration step, provider callbacks, production security checks, and recovery procedures remain [Phase 9 work](docs/roadmap/phase9.md). Do not treat the starter as reproducibly production-deployable until that work is complete.
+and preview it locally with:
 
-## Further documentation
+```sh
+pnpm preview
+```
 
-- [Current project state](docs/current/project-state.md) — implemented stack, architecture, compatibility notes, and validation evidence.
-- [Database foundation](docs/current/database.md) — database integration, environment conventions, migration policy, and operational evidence.
-- [Better Auth server](docs/current/auth.md) — current auth implementation, schema generation, live-test boundary, and validation evidence.
-- [Roadmap](docs/roadmap/roadmap.md) — completed phases, incomplete functionality, dependencies, and production definition of done.
-- [Phase 3 validation record](docs/reference/phase-3-auth-database-validation.md) — detailed migration and auth-server verification history.
+The reference deployment target is Vercel with Neon PostgreSQL.
+
+See [deployment](docs/deployment.md) for the current environment requirements. The complete production deployment workflow is covered by [Phase 9](docs/roadmap/roadmap.md#phase-9).
+
+## Documentation
+
+- [Authentication](docs/authentication.md) — authentication behavior and configuration.
+- [Database](docs/database.md) — database integration, schema and migrations.
+- [Testing](docs/testing.md) — test structure and disposable database setup.
+- [Deployment](docs/deployment.md) — build and environment configuration.
+- [Roadmap](docs/roadmap/roadmap.md) — remaining work and production acceptance criteria.
+- Architectural decisions:
+  - [Better Auth](docs/decisions/001-better-auth.md)
+  - [Neon HTTP](docs/decisions/002-neon-http.md)
+  - [Cookie cache](docs/decisions/003-cookie-cache-disabled.md)
+  - [Versioned migrations](docs/decisions/004-versioned-migrations.md)

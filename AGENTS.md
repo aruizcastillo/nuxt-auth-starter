@@ -55,17 +55,17 @@ Do not implement around an unresolved decision if that could constrain the event
 
 ## Documentation
 
-Review relevant files under `docs/current/` and `docs/deprecated/` before changing an established area.
+Review the relevant topic documents in `docs/` and architectural decisions in `docs/decisions/` before changing an established area.
 
 Maintain:
 
-* `docs/current/` — implemented architecture, integrations, current decisions and useful validation evidence.
-* `docs/deprecated/` — superseded approaches and decisions that should not be reintroduced casually.
-* `docs/roadmap/` — planned work and scope.
+* `docs/*.md` describes current behavior.
+* `docs/roadmap/*` describes future work.
+* `docs/decisions/*` explains durable architectural decisions and constraints.
 
 Update existing topic files instead of creating documentation for every small task.
 
-Keep documentation focused on current project state. Preserve history only when useful for maintenance.
+Keep each fact in one canonical home and link to it from other documents. Remove completed phase summaries, migration checkpoints and obsolete implementation notes; Git preserves their history. Retain important architectural reasoning in ADRs, not historical logs.
 
 ### README
 
@@ -80,7 +80,8 @@ clean clone → install → configure → migrate → run → validate
 Use:
 
 * `README.md` for installation, configuration, database setup, development, validation and deployment.
-* `docs/current/` for implementation details, rationale and validation evidence.
+* `docs/*.md` for current implementation details and useful validation procedures.
+* `docs/decisions/` for architectural rationale.
 * `docs/roadmap/` for incomplete/planned work.
 
 When implementation changes the normal setup or usage path, update the README in the same work.
@@ -108,6 +109,8 @@ Add a layer only when it isolates real complexity, establishes a meaningful boun
 - Keep external providers and clients loosely coupled and locally owned. Integration-specific configuration, validation, and implementation should stay with that integration, while provider-independent domain logic stays outside it. Prefer simple composition over generic registries, adapters, plugin systems, or speculative abstractions.
 
 - When adding or changing a feature, preserve clear ownership boundaries. A concrete integration or domain should not leak its configuration, data model, or implementation details into unrelated parts of the application. If removing or replacing one integration would require changes to unrelated code, review the boundary before proceeding.
+
+- Keep provider-specific implementations inside the module that owns the integration, for example `database/providers/neon.ts`, `email/providers/resend.ts`, or `auth/providers/google.ts`. Unrelated application code should depend on the owning module boundary rather than importing provider implementations directly when a simple boundary is sufficient.
 
 ## Framework ownership
 
@@ -176,11 +179,13 @@ schema
 
 ## Neon and Vercel
 
-Deployment is Vercel-first and PostgreSQL runs on Neon.
+The reference deployment architecture is Vercel-first, with Neon as the default PostgreSQL provider.
 
-Use `@neondatabase/serverless` according to current Neon and Drizzle guidance.
+PostgreSQL and Drizzle define the database contract. Keep Neon-specific client behavior and operational workflow isolated within its provider integration.
 
-Do not introduce long-running Node server or traditional pool assumptions into serverless code.
+The reference implementation uses `@neondatabase/serverless` with the Neon HTTP driver for stateless, serverless-friendly database access. Review driver-specific capabilities, including transaction behavior, when replacing the database client.
+
+Do not introduce long-running Node server or traditional pool assumptions into the reference serverless implementation.
 
 Keep local, preview and production databases/secrets isolated.
 

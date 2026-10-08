@@ -1,8 +1,16 @@
 # Database
 
+## Contract and reference provider
+
+PostgreSQL is the persistence requirement. Drizzle owns the typed schema, relations, queries and migrations; Better Auth owns authentication and its persisted models. These are independent of the hosting provider.
+
+Neon is the default/reference implementation. Its HTTP driver, CLI, branches and pooled/direct connection workflow belong to that integration. See [Using another PostgreSQL provider](../README.md#using-another-postgresql-provider) for the replacement procedure.
+
 ## Runtime integration
 
-`server/database/clients/neon.ts` exports `createDatabase(databaseUrl: string)` with an inferred typed return. It constructs `drizzle({ client: neon(databaseUrl), relations })` using Neon 1.1.0 and Drizzle ORM 1.0.0-rc.4. Constructing it does not execute a query; there is no persistent pool, global client, public database probe or startup query.
+`server/database/index.ts` is the public client boundary. It exports `createDatabase(databaseUrl: string)` and `Database = ReturnType<typeof createDatabase>`. Runtime auth, auth tooling and test helpers import through this entry point rather than directly from the provider. The type follows the selected implementation and preserves Drizzle's inference; it is not a generic driver interface.
+
+`server/database/providers/neon.ts` implements the reference factory. It constructs `drizzle({ client: neon(databaseUrl), relations })` using `@neondatabase/serverless` 1.1.0 and Drizzle ORM 1.0.0-rc.4. Constructing it does not execute a query; there is no persistent pool, global client, public database probe or startup query.
 
 Server consumers obtain `useRuntimeConfig(event)`, validate it with `parseDatabaseConfig` from `server/database/config.ts`, and pass `databaseUrl` to the factory. Validation requires a PostgreSQL protocol and hostname. Keep imports under `server/`; callers must handle driver errors without returning connection objects or credentials to clients.
 
@@ -45,7 +53,7 @@ Drizzle Kit 1.0.0-rc.4 owns migration generation and metadata. Its installed typ
 - Migrations: `server/database/migrations`.
 - Scripts: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:push`, `pnpm db:studio`.
 
-The versioned workflow is explained in [ADR 004](decisions/004-versioned-migrations.md); the setup commands are in [README](../README.md#database-setup). Before migration, identify the project/branch/endpoint in Neon and compare the selected database/role with the intended target. Confirm backups/recovery arrangements and review destructive statements and data transformations. Kit uses the direct `DATABASE_URL_UNPOOLED` for database access, independently of the private Nuxt runtime override. Kit loads dotenv outside Nuxt and does not share a runtime abstraction with the application.
+The versioned workflow is explained in [ADR 004](decisions/004-versioned-migrations.md); the setup commands are in [README](../README.md#database-setup). Before migration, verify the database endpoint and role against the intended target; with Neon, also identify the project and branch. Confirm backups/recovery arrangements and review destructive statements and data transformations. Kit uses the direct `DATABASE_URL_UNPOOLED` for database access, independently of the private Nuxt runtime override. Kit loads dotenv outside Nuxt and does not share a runtime abstraction with the application.
 
 For a schema change:
 

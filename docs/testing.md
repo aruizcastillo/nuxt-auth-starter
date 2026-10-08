@@ -16,6 +16,8 @@ The e2e setup uses `setupTimeout: 600000` because cold Nitro builds on Windows c
 
 ## Test target and commands
 
+The current integration test setup deliberately remains Neon-specific. Its branch allowlist and connection workflow validate the reference provider; they are not requirements of the application's PostgreSQL contract. A provider replacement must adapt this setup before running the suite. Provider-neutral integration coverage remains future work.
+
 `test/helpers/auth.ts` is the canonical allowlist for the branch label, exact pooled endpoint and database path. Provision a separate disposable target, verify its Neon identity, and deliberately update that allowlist if it is replaced. Environment configuration alone cannot authorize an arbitrary database. Never point the suite at development or production.
 
 The ignored `.env.test-phase3` is an explicitly selected local test file using **existing variable names only**. The file is not loaded by default.

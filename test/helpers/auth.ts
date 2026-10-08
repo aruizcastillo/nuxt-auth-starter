@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
-import { createDatabase } from '../../server/database/clients/neon'
+import { createDatabase, type Database } from '../../server/database'
 import { account, session, user } from '../../server/database/schema/auth'
 import { parseDatabaseConfig } from '../../server/database/config'
 
@@ -17,7 +17,7 @@ export function testDatabase() {
   return { databaseUrl, db: createDatabase(databaseUrl) }
 }
 
-export function authFixtures(db: ReturnType<typeof createDatabase>) {
+export function authFixtures(db: Database) {
   const emails: string[] = []
   return {
     credentials() {

@@ -2,7 +2,7 @@
 
 ## Current support
 
-`pnpm build` produces the server build and `pnpm preview` runs it locally. `nuxt.config.ts` has no explicit Nitro deployment preset or custom route rules. There is no repository CI/release workflow establishing a verified production deployment. Vercel with Neon is the intended hosting path; the starter is not yet reproducibly production-deployable.
+`pnpm build` produces the server build and `pnpm preview` runs it locally. `nuxt.config.ts` has no explicit Nitro deployment preset or custom route rules. There is no repository CI/release workflow establishing a verified production deployment. Vercel with Neon is the reference hosting path; the starter is not yet reproducibly production-deployable. PostgreSQL is required, while the database provider can be replaced through the [documented client boundary and setup changes](../README.md#using-another-postgresql-provider).
 
 Use the [README](../README.md#requirements) for the supported Node/pnpm versions and setup commands. This application requires server auth routes; static generation is not its deployment path.
 

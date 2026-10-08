@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth'
 import { describe, expect, it } from 'vitest'
 import { createAuth } from '../../server/auth/options'
 import { createGoogleProvider } from '../../server/auth/providers/google'
-import { createDatabase } from '../../server/database/clients/neon'
+import { createDatabase } from '../../server/database'
 import { parseAuthConfig } from '../../server/auth/config'
 
 describe('Better Auth method boundaries', () => {

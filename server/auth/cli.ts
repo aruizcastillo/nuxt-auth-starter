@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { createAuth } from './options'
-import { createDatabase } from '../database/clients/neon'
+import { createDatabase } from '../database'
 import { parseAuthConfig } from './config'
 import { parseDatabaseConfig } from '../database/config'
 

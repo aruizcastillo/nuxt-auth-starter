@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import { createAuth } from '../auth/options'
-import { createDatabase } from '../database/clients/neon'
+import { createDatabase } from '../database'
 import { parseAuthConfig } from '../auth/config'
 import { parseDatabaseConfig } from '../database/config'
 

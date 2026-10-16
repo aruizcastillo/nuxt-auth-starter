@@ -27,7 +27,8 @@ Complete the server's email/password, verified-email, recovery and Google polici
 
 ### 2. Connect real email delivery for verification and password recovery, following [Better Auth's email guidance](https://better-auth.com/docs/concepts/email).
 
-- [ ] Implement `server/email/providers/resend.ts` as one typed Resend sender. POST to `https://api.resend.com/emails` with bearer authentication and `from`, `to`, `subject` and text content. Use a bounded timeout and no blind automatic POST retries; validate success and classify provider errors without logging request bodies. [Resend send API](https://resend.com/docs/api-reference/emails/send-email).
+The isolated transport is described in [authentication](../authentication.md#isolated-email-transport), with automated coverage in [testing](../testing.md#email-transport-coverage). The following integration work remains pending; step 2 is not complete.
+
 - [ ] Connect `emailVerification.sendVerificationEmail` and `emailAndPassword.sendResetPassword` to the sender, preserving Better Auth's supplied URL. Do not generate verification/reset tokens, store duplicate tokens or replace their expiry checks. Use simple text emails; no template platform is required.
 - [ ] Connect `advanced.backgroundTasks.handler` to the current Nitro event's supported `waitUntil` lifetime. Extend `server/utils/auth.ts` to pass a request-scoped scheduler into the factory; never retain an event globally. In both email callbacks, register the actual delivery promise with that scheduler and resolve after registration. Installed 1.7.9's resend path directly awaits `sendVerificationEmail`, so the background option alone does not make every callback nonblocking. Verify the installed H3/Nitro event API and Vercel preset before deployment. [Better Auth options](https://better-auth.com/docs/reference/options), [H3 event lifetime](https://h3.dev/guide/api/h3event).
 - [ ] Ensure sending does not create an account-existence timing distinction, and scheduled failures reach sanitized operational reporting. Do not use a detached `void sendEmail()` that Vercel may terminate. Add a test proving the promise is registered with the event lifecycle and rejection is handled.
@@ -508,6 +509,7 @@ Tests accompany implementation; CI and security gates must pass before productio
 
 ## Defer for later
 
+- Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 reaches a stable release; see [Build performance on Windows](../../README.md#build-performance-on-windows).
 - Organizations, multi-tenancy, invitations, roles and permission-management frameworks.
 - Billing, subscriptions, dashboards and application-specific CRUD.
 - MFA, passkeys, additional OAuth providers and advanced account-management UI.

@@ -231,6 +231,12 @@ The reference deployment target is Vercel with Neon PostgreSQL.
 
 See [deployment](docs/deployment.md) for the current environment requirements. The complete production deployment workflow is covered by [Phase 9](docs/roadmap/roadmap.md#phase-9).
 
+### Build performance on Windows
+
+Production builds on Windows are affected by a [known Nitro 2 performance issue](https://github.com/nuxt/nuxt/issues/34753) involving dependency resolution and file tracing.
+
+The Nuxt maintainers confirmed that this issue has been fixed in Nitro 3. **Migration to Nuxt 5 / Nitro 3 is planned once Nuxt 5 reaches a stable release.** Until then, the project retains Nitro's default configuration to preserve compatibility.
+
 ## Documentation
 
 - [Authentication](docs/authentication.md) — authentication behavior and configuration.

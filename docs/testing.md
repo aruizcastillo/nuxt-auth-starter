@@ -6,6 +6,12 @@
 
 Use the [README command table](../README.md#development-and-validation-commands) for lint, typecheck, unit tests and build. `pnpm test:run` includes database mutations; it requires the explicit disposable target below. Missing infrastructure fails rather than silently skipping the suite. No Markdown-specific validation script exists.
 
+## Email transport coverage
+
+`test/unit/resend.test.ts` exercises the isolated Resend sender with an injected fetch function and native `Response` objects. It covers acceptance and payload shape, configurable sender, malformed JSON and success schemas, key/permission errors, sender rejection, HTTP 429, provider failures, network errors, sanitized exceptions and absence of automatic retries/logging. Two tests exercise the real ten-second abort deadline while waiting for headers or consuming a stalled body. No emails are sent and no Resend credentials or database are needed for these tests. Run `pnpm exec vitest run --project unit`.
+
+These tests do not establish real delivery, verification/reset links or serverless background lifetime; those checks belong to the remaining Phase 4 work.
+
 ## HTTP coverage
 
 `test/e2e/auth-server.test.ts` exercises the existing catch-all against the real Nitro server and explicitly allowlisted disposable database. It covers required registration fields, invalid email, rejected 7/129 and accepted 8/128 password lengths, duplicate registration, persisted user/credential/session records, native hash verification, successful sign-in, identical unknown-account/wrong-password responses, secure cookie issuance, database session revocation and repeated sign-out with stale or absent cookies. Fixtures remove only their own users, accounts and sessions.

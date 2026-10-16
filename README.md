@@ -90,8 +90,10 @@ The current database and auth setup uses:
 Generate a Better Auth secret with:
 
 ```sh
-node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+pnpm auth:secret
 ```
+
+The CLI generates a `BETTER_AUTH_SECRET` entry. Copy its value into `NUXT_BETTER_AUTH_SECRET` in your `.env` file.
 
 The following integrations are planned but not connected yet:
 

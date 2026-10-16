@@ -193,8 +193,8 @@ See [authentication](docs/authentication.md) for the currently implemented behav
 | `pnpm lint` | Run ESLint. |
 | `pnpm typecheck` | Run Nuxt/Vue TypeScript checks. |
 | `pnpm test` | Run Vitest in watch mode. |
-| `pnpm test:run` | Run the complete test suite once. |
-| `pnpm exec vitest run --project unit` | Run database-independent unit tests. |
+| `pnpm test:run --project unit` | Run database-independent unit tests for quick feedback. |
+| `pnpm test:run` | Run the complete suite, including the HTTP tests' internal build. |
 | `pnpm build` | Create a production build. |
 | `pnpm preview` | Preview the production build locally. |
 | `pnpm db:generate` | Generate migrations from schema changes. |
@@ -202,16 +202,11 @@ See [authentication](docs/authentication.md) for the currently implemented behav
 | `pnpm db:push` | Push schema changes directly for development use. |
 | `pnpm db:studio` | Open Drizzle Studio. |
 
-Standard local validation:
+For routine validation, run `pnpm lint`, `pnpm typecheck`, and `pnpm test:run --project unit`.
 
-```sh
-pnpm lint
-pnpm typecheck
-pnpm exec vitest run --project unit
-pnpm build
-```
+Run `pnpm test:run` when full integration coverage is needed. It includes an internal production build and requires an isolated [test database](docs/testing.md#test-target-and-commands).
 
-`pnpm test:run` includes live database auth tests that create and remove test accounts. Configure a disposable test target before running it; see [testing](docs/testing.md#test-target-and-commands).
+Run `pnpm build` separately when production compilation needs validation.
 
 ## Deployment
 

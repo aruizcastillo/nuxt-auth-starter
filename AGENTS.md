@@ -278,14 +278,7 @@ For framework/library changes:
 * update relevant documentation;
 * run appropriate validation.
 
-Default validation:
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test:run
-pnpm build
-```
+Run only the validations relevant to the changes. Avoid unnecessary tests and builds, especially redundant production builds. See [validation scope](docs/testing.md#validation-scope) for details.
 
 If a command cannot run or fails for unrelated reasons, report it explicitly.
 

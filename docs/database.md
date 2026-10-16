@@ -12,7 +12,7 @@ Neon is the default/reference implementation. Its HTTP driver, CLI, branches and
 
 `server/database/providers/neon.ts` implements the reference factory. It constructs `drizzle({ client: neon(databaseUrl), relations })` using `@neondatabase/serverless` 1.2.0 and Drizzle ORM 1.0.0-rc.4. Constructing it does not execute a query; there is no persistent pool, global client, public database probe or startup query.
 
-Server consumers obtain `useRuntimeConfig(event)`, validate it with `parseDatabaseConfig` from `server/database/config.ts`, and pass `databaseUrl` to the factory. Validation requires a PostgreSQL protocol and hostname. Keep imports under `server/`; callers must handle driver errors without returning connection objects or credentials to clients.
+Server consumers obtain `useRuntimeConfig()` from `nuxt/server`, validate it with `parseDatabaseConfig` from `server/database/config.ts`, and pass `databaseUrl` to the factory. Validation requires a PostgreSQL protocol and hostname. Keep imports under `server/`; callers must handle driver errors without returning connection objects or credentials to clients.
 
 `server/database/schema/index.ts` owns the provider-independent `authTables` mapping and composed relations: full `defineRelations(authTables)` entries followed by generated `authRelations`. This keeps regeneration separate from application composition. The auth adapter imports the table mapping directly. See [ADR 002](decisions/002-neon-http.md) for the HTTP transport constraint.
 

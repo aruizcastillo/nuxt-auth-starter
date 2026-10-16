@@ -6,7 +6,7 @@ const databaseSchema = z.object({
 })
 
 // Database config is parsed lazily when database functionality is initialized.
-// Runtime callers pass useRuntimeConfig(event); tooling supplies values directly.
+// Runtime callers pass useRuntimeConfig(); tooling supplies values directly.
 export function parseDatabaseConfig(config: unknown) {
   const result = databaseSchema.safeParse(config)
   if (!result.success) throw new Error(formatConfigError(result.error))

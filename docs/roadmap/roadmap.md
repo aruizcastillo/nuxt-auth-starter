@@ -2,6 +2,8 @@
 
 This file describes future work only. Current behavior lives in [authentication](../authentication.md), [database](../database.md), [testing](../testing.md) and [deployment](../deployment.md); setup lives in [README](../../README.md). Architectural constraints live in [ADRs](../decisions/001-better-auth.md).
 
+Respect [AGENTS.md](../../AGENTS.md) and the roadmap's [scope exclusions](#out-of-scope) throughout every phase.
+
 Phase numbers are retained for dependency references. Phases 1–3 and credential registration/sign-in/sign-out are represented by current documentation, not completed checklists. Recheck exact installed versions and official guidance before implementing each phase. Required and quality/hardening work both gate production.
 
 Implement one architectural or security decision at a time, test it, and review its ownership boundary before advancing. Within Phase 4, proceed through email transport/callbacks, verified-email/reset policy, Google/linking, then the authorization/input contract.
@@ -29,10 +31,20 @@ Complete the server's email/password, verified-email, recovery and Google polici
 
 The isolated transport is described in [authentication](../authentication.md#isolated-email-transport), with automated coverage in [testing](../testing.md#email-transport-coverage). The following integration work remains pending; step 2 is not complete.
 
-- [ ] Connect `emailVerification.sendVerificationEmail` and `emailAndPassword.sendResetPassword` to the sender, preserving Better Auth's supplied URL. Do not generate verification/reset tokens, store duplicate tokens or replace their expiry checks. Use simple text emails; no template platform is required.
-- [ ] Connect `advanced.backgroundTasks.handler` to the current Nitro event's supported `waitUntil` lifetime. Extend `server/utils/auth.ts` to pass a request-scoped scheduler into the factory; never retain an event globally. In both email callbacks, register the actual delivery promise with that scheduler and resolve after registration. Installed 1.7.9's resend path directly awaits `sendVerificationEmail`, so the background option alone does not make every callback nonblocking. Verify the installed H3/Nitro event API and Vercel preset before deployment. [Better Auth options](https://better-auth.com/docs/reference/options), [H3 event lifetime](https://h3.dev/guide/api/h3event).
-- [ ] Ensure sending does not create an account-existence timing distinction, and scheduled failures reach sanitized operational reporting. Do not use a detached `void sendEmail()` that Vercel may terminate. Add a test proving the promise is registered with the event lifecycle and rejection is handled.
-- [ ] Verify real receipt and usable links with a controlled mailbox. Test provider timeout, 429, rejected sender and invalid key using an injected test transport, not actual repeated mail. User-facing acceptance means the request was accepted, not proof of inbox delivery.
+**Required behavior and guarantees**
+
+- [ ] Connect verification and password-reset emails to the existing Resend transport using simple text messages. Better Auth owns tokens, URLs, expiry and validation; preserve its supplied links.
+- [ ] Keep provider delivery time and failures out of account-existence signals in HTTP responses. Handle delivery failures through sanitized operational reporting, without exposing recipients, credentials or token-bearing URLs.
+- [ ] Verify background-task lifecycle support in the runtime used and handle any limitation explicitly, without silently losing sends or weakening security and error handling. Support for arbitrary runtimes or complex fallback mechanisms is not required.
+- [ ] Keep email independent of Nitro and Vercel, and isolate platform-specific integration. Preserve the transport's timeout and absence of automatic retries. Request acceptance and Resend acceptance do not establish inbox delivery.
+- [ ] Test callback links, task registration, response independence from a pending delivery, sanitized rejection handling and missing lifecycle support. Use an injected transport for timeout, 429, rejected-sender and invalid-key cases; retain existing transport coverage. Verify real receipt and usable links with a controlled mailbox and confirm the deployed Vercel lifecycle.
+
+**Proposed implementation — verify before implementation**
+
+- Use `server/email/index.ts` as the email module entry point, reusing the Resend transport and accepting an injected task-registration function. Keep Nitro/Vercel imports out of this module. Compose it per request in `server/utils/auth.ts` and supply the prepared sender to the auth factory.
+- Connect `emailVerification.sendVerificationEmail` and `emailAndPassword.sendResetPassword` in `server/auth/options.ts` to that sender. Register the actual delivery promise with rejection handling, then resolve the callback without awaiting delivery. Better Auth 1.7.9 directly awaits the verification-resend callback; this approach covers that path without also configuring `advanced.backgroundTasks.handler`. Verify the installed callback behavior before wiring it. [Better Auth options](https://better-auth.com/docs/reference/options).
+- Verify the actual task-registration API in the installed Nitro 2 types/source, including the applicability of `event.waitUntil` or `event.req.waitUntil`, and its connection to Vercel's lifecycle. A small `server/plugins/vercel.ts` bridge to the official `@vercel/functions` helper remains proposed, loaded and activated only on Vercel if needed. Confirm API and package compatibility, request-context delegation and behavior when lifecycle support is absent before implementation. [Nitro 2 plugins](https://v2.nitro.build/guide/plugins), [Vercel waitUntil](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#waituntil).
+- Treat the bridge as integration for the current versions. Reevaluate whether it is needed during the planned Nuxt 5 / Nitro 3 migration.
 
 ### 3. Define verified-email access and password-reset session behavior.
 
@@ -170,7 +182,7 @@ Deliver usable, localized and accessible authentication/account screens on the s
 ### 3. Add a protected account page with basic profile editing and sign-out.
 
 - [ ] Replace the `/account` shell with SSR account data from `useFetch('/api/account')` and the auth middleware. Display the server-provided name, email and verification state.
-- [ ] Scope basic editing to the display name (for example trimmed 1–100 characters). Keep email read-only; email change, account deletion, uploads and linked-provider management remain deferred.
+- [ ] Scope basic editing to the display name (for example trimmed 1–100 characters). Keep email read-only; email change, account deletion, uploads and linked-provider management remain out of scope.
 - [ ] Submit through `authClient.updateUser({ name })`, preserving Better Auth ownership checks. Enforce the same name rule server-side in a supported narrow Better Auth user-create/update hook in `server/auth/options.ts`; throw a documented safe API error for invalid names. Do not add a parallel profile mutation proxy.
 - [ ] After successful update, let the client signal refresh session consumers and refresh the account page's fetched data. Preserve unsaved text on failure; update displayed data only after confirmed success.
 - [ ] Wire sign-out to Phase 5's behavior and account/header navigation into `AppHeader.vue`. Add tests proving forged `userId`/`emailVerified` updates cannot change identity or another user's data through the built-in endpoint.
@@ -292,7 +304,7 @@ The starter has reliable repeatable tests and mandatory CI checks. Real provider
 
 ### Goal
 
-Verify production security assumptions and document manageable operational recovery before deployment. Keep the roadmap's deferred infrastructure and full recovery rehearsal out of scope.
+Validate production security controls and document practical operational recovery procedures before deployment.
 
 ### Preconditions
 
@@ -339,9 +351,9 @@ Verify production security assumptions and document manageable operational recov
 
 ### 6. Document secret rotation, database recovery and failed-deployment handling.
 
-- [ ] Create the operations runbook to be added to `docs/deployment.md` listing secret owners, storage location, rotation sequence and verification for auth secret, Neon password, Google secret and Resend key; record no actual values.
+- [ ] Create the operations runbook in `docs/deployment.md` listing secret owners, storage location, rotation sequence and verification for auth secret, Neon password, Google secret and Resend key; record no secret values.
 - [ ] For auth-secret rotation, inspect 1.7.9's supported rotation options and document effects on sessions, verification links and any encrypted stored OAuth data. Do not assume changing one string preserves all encrypted material; require reauthentication/relinking where necessary.
-- [ ] Document Neon's configured restore retention, responsible operator and restore-to-new-branch/cutover procedure, with checks of schema, migrated version and user/session consistency. A complete database-recovery rehearsal remains deferred. [Neon recovery](https://neon.com/docs/introduction/branch-restore).
+- [ ] Document Neon's restore-to-new-branch/cutover procedure, checks of schema, migration history and user/session consistency, and the responsible operational role. Explain how to determine configured retention and available recovery capabilities; confirm and record production-specific values in Phase 9. [Neon recovery](https://neon.com/docs/introduction/branch-restore).
 - [ ] Describe failed migration/deployment handling: stop rollout, identify the last compatible application/schema pair, preserve migration history, prefer forward correction, and roll back application code only when schema-compatible. Never run destructive reverse SQL automatically.
 - [ ] Include email-provider outage handling, investigation using safe event IDs, user resend/recovery guidance and credential compromise response. Keep this a short runbook, not a new monitoring platform.
 
@@ -389,7 +401,7 @@ Deploy the validated starter through an isolated preview to production, with con
 - [ ] Add a trusted release job or documented operator step that selects the target, checks migration review/CI results and runs `pnpm db:migrate` once before releasing dependent code. Serialize migration jobs per database.
 - [ ] Apply committed artifacts only; no `db:push`, schema generation or migrations in Vercel build/request/cold-start hooks. Preview branch creation and migration must finish before preview traffic depends on the new schema.
 - [ ] Prevent an automatic production deployment from racing ahead of the migration step: configure a gated promotion/deploy workflow and test the ordering on preview.
-- [ ] Check compatibility with the currently running application before changing a shared schema. Use additive changes first; on a failed migration, stop deployment and follow the operations runbook to be added to `docs/deployment.md` rather than blindly retrying or deleting migration history.
+- [ ] Check compatibility with the currently running application before changing a shared schema. Use additive changes first; on a failed migration, stop deployment and follow the operations runbook in `docs/deployment.md` rather than blindly retrying or deleting migration history.
 - [ ] Record release commit, migration identifiers and target branch in deployment notes without secrets. Verify no pending migration remains for the deployed commit.
 
 ### 4. Deploy a preview and exercise complete authentication and account flows.
@@ -408,12 +420,12 @@ Deploy the validated starter through an isolated preview to production, with con
 - [ ] Inspect both locales, mobile layout, console/hydration output, cookie attributes and private response headers. Clean only the controlled test data according to the runbook; do not remove unrelated accounts.
 - [ ] Record release success/failures. Halt promotion or invoke the documented compatible rollback/forward-fix procedure if a required auth flow fails.
 
-### 6. Confirm useful error reporting and document database recovery procedures.
+### 6. Verify error reporting and operational recovery readiness.
 
 - [ ] Use Vercel's existing logs/error facilities to verify actionable records for configuration failure, database outage and email rejection. Add a small correlation/error-code convention only if necessary; no analytics or observability platform is required.
 - [ ] Confirm logs contain no passwords, session cookies, recovery tokens, provider keys or connection strings. Check the actual deployed error path, not just unit mocks.
-- [ ] Update the operations runbook to be added to `docs/deployment.md` with real project/branch identifiers, restore retention, responsible operators and links to the provider consoles, excluding credentials. Verify the documented recovery/cutover capability exists for the selected Neon plan. [Neon branch restore](https://neon.com/docs/introduction/branch-restore).
-- [ ] Confirm the last compatible release and migration record can be located and that deployment rollback does not imply database rollback. Keep the full restore rehearsal deferred as specified in the roadmap.
+- [ ] Validate the Phase 8 operations runbook against the actual deployment. Confirm Neon's configured restore retention and available recovery/cutover capabilities for the selected plan; record these details, real project/branch identifiers, responsible operators and provider-console links in `docs/deployment.md`, excluding credentials. [Neon branch restore](https://neon.com/docs/introduction/branch-restore).
+- [ ] Confirm the last compatible application release and associated migration records can be located. Verify the operations runbook distinguishes rolling back application code from restoring database state.
 
 ### Phase verification
 
@@ -437,7 +449,6 @@ Make the completed starter reproducible by a new maintainer without undocumented
 
 - Phases 1–9 are complete, with reproducible migrations, passing quality gates and recorded real deployment/provider checks.
 - Review the implementation and documentation together; the initial inspection found a generic multi-package-manager README, `Hello Nuxt!`, a header link to `example.com`, and `nuxt-auth-starter.com` in `public/robots.txt` and `public/sitemap.xml`.
-- Keep all roadmap deferrals: no organizations, roles framework, billing, MFA, passkeys, extra providers, Redis, queues, generic service/repository layers or full recovery rehearsal.
 
 ### 1. Document setup from a fresh clone through migration and first sign-in.
 
@@ -451,7 +462,7 @@ Make the completed starter reproducible by a new maintainer without undocumented
 - [ ] Extend README environment configuration with every actual `NUXT_*` variable, runtime key, required phase/environment, safe example and purpose. Link the database document for tooling lookup; keep each variable definition in one canonical home.
 - [ ] Document Google console setup, exact provider callback path, safe application return destinations, consent/test-user requirements and normal implicit linking with verification/trust safeguards. Explain accepted trustworthy linking and rejected unsafe collisions.
 - [ ] Document Resend sender verification, private key/sender configuration, controlled test recipient, generic request acknowledgements and background-delivery diagnostics. Use plain templates and the implemented provider only.
-- [ ] Finish `docs/deployment.md` with Vercel environment isolation, Node/pnpm settings, controlled preview hostname, migration-before-release sequence and production smoke checklist. Link the operations runbook to be added to `docs/deployment.md` for recovery/rotation.
+- [ ] Finish `docs/deployment.md` with Vercel environment isolation, Node/pnpm settings, controlled preview hostname, migration-before-release sequence and production smoke checklist. Verify its operations runbook reflects the recovery and secret-rotation procedures and environment-specific details confirmed in Phases 8–9.
 - [ ] Keep documentation provider links current and applicable to the implemented versions: [Better Auth Nuxt](https://better-auth.com/docs/integrations/nuxt), [Drizzle Neon](https://orm.drizzle.team/docs/connect-neon), [Vercel Nuxt](https://vercel.com/docs/frameworks/full-stack/nuxt). Do not copy release-line-changing `@latest` commands into setup instructions.
 
 ### 3. Explain session ownership, server authorization and test boundaries briefly.
@@ -484,7 +495,7 @@ Make the completed starter reproducible by a new maintainer without undocumented
 - [ ] Trace every roadmap definition-of-done item to passing automated evidence or a recorded real-environment manual check.
 - [ ] Confirm README, `.env.example`, actual scripts, CI and deployment settings agree; all referenced local files and instructions exist.
 - [ ] Confirm a fresh-clone setup and isolated preview deployment succeeded, or explicitly report the exact unmet external prerequisite without declaring the phase complete.
-- [ ] Verify no deferred feature or unnecessary dependency was introduced during cleanup.
+- [ ] Verify no out-of-scope feature or unnecessary dependency was introduced during cleanup.
 
 ### Expected state after completion
 
@@ -507,14 +518,22 @@ Tests accompany implementation; CI and security gates must pass before productio
 - [ ] Vercel/Neon deployment and email delivery are verified, and recovery procedures are documented.
 - [ ] A new developer can configure and launch the starter from its documentation.
 
-## Defer for later
+## Planned maintenance
 
-- Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 reaches a stable release; see [Build performance on Windows](../../README.md#build-performance-on-windows).
+- [ ] Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 reaches a stable release and compatibility with the starter's dependencies and deployment is verified; see [Build performance on Windows](../../README.md#build-performance-on-windows).
+
+## Out of scope
+
+The following capabilities and operational activities are excluded from the starter's current scope and are not committed future work.
+
+**Capabilities**
+
 - Organizations, multi-tenancy, invitations, roles and permission-management frameworks.
 - Billing, subscriptions, dashboards and application-specific CRUD.
 - MFA, passkeys, additional OAuth providers and advanced account-management UI.
-- Generic repositories, service layers, DI containers and runtime schema systems.
-- Duplicate auth state, Axios wrappers and generic API-client frameworks.
 - Redis, queues, caching infrastructure, uploads and realtime features without a concrete need.
 - A custom email-template platform, analytics suite or elaborate design system.
+
+**Operational activities**
+
 - A full database-recovery rehearsal.

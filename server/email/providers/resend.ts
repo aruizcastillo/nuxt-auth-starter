@@ -46,7 +46,7 @@ function classifyFailure(status: number, data: unknown): ResendErrorCode {
   return 'rejected'
 }
 
-// The future runtime caller supplies useRuntimeConfig(event); no request is retained.
+// The future runtime caller supplies useRuntimeConfig(); no request is retained.
 export function createResendSender(config: unknown, fetcher: typeof fetch = fetch) {
   const settings = parseResendConfig(config)
 

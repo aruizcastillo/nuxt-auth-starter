@@ -9,10 +9,10 @@ import { parseDatabaseConfig } from '../../server/database/config'
 export function testDatabase() {
   const { databaseUrl } = parseDatabaseConfig({ databaseUrl: process.env.NUXT_DATABASE_URL })
   const url = new URL(databaseUrl)
-  if (process.env.NEON_BRANCH !== 'test-phase3'
+  if (process.env.NEON_BRANCH !== 'test'
     || url.hostname !== 'ep-rough-resonance-zadpdt75-pooler.c-2.eu-west-2.aws.neon.tech'
     || url.pathname !== '/nuxt_auth_starter_db') {
-    throw new Error('Supply the verified test-phase3 target explicitly; development/production targets are forbidden')
+    throw new Error('Supply the verified test target explicitly; development/production targets are forbidden')
   }
   return { databaseUrl, db: createDatabase(databaseUrl) }
 }
@@ -21,9 +21,9 @@ export function authFixtures(db: Database) {
   const emails: string[] = []
   return {
     credentials() {
-      const email = `phase3-${randomUUID()}@example.test`
+      const email = `auth-test-${randomUUID()}@example.test`
       emails.push(email)
-      return { name: 'Phase 3 integration', email, password: randomUUID() }
+      return { name: 'Auth integration test', email, password: randomUUID() }
     },
     async cleanup() {
       if (!emails.length) return

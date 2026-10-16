@@ -2,7 +2,7 @@
 
 ## Server integration
 
-`server/auth/options.ts` is the single typed Better Auth factory. It accepts parsed auth settings and the existing Drizzle client. `server/utils/auth.ts` assembles it from `useRuntimeConfig(event)` on demand; the standard catch-all handler returns `auth.handler(toWebRequest(event))` unchanged. There is no startup database query, additional connection layer, client auth state or auth UI.
+`server/auth/options.ts` is the single typed Better Auth factory. It accepts parsed auth settings and the existing Drizzle client. `server/utils/auth.ts` assembles it from `useRuntimeConfig()` on demand. The catch-all explicitly imports `defineEventHandler` from `nuxt/server` and passes its portable `event.req` to Better Auth, returning `auth.handler(event.req)` directly. Runtime configuration also comes from `nuxt/server`. There is no startup database query, additional connection layer, client auth state or auth UI.
 
 Better Auth and its adapter resolve to **1.7.9**. The adapter uses `@better-auth/drizzle-adapter/relations-v2`, PostgreSQL and the explicit core table mapping described in [database](database.md#runtime-integration). Adapter transactions are explicitly disabled for the reference driver's capabilities; joins remain disabled by default. See [Neon HTTP](decisions/002-neon-http.md) for the rationale and when to review that setting.
 
@@ -22,7 +22,7 @@ Google is not yet composed into runtime auth. Resend provides an isolated text t
 
 ### Isolated email transport
 
-`createResendSender(config, fetcher?)` in `server/email/providers/resend.ts` validates the existing private Resend settings and returns `sendEmail({ to, subject, text })`. A future runtime caller will supply `useRuntimeConfig(event)`. No environment reads, event retention, startup requirements or auth callbacks are added by the transport. The sender remains configurable; changing to a verified domain only requires changing `NUXT_EMAIL_FROM`.
+`createResendSender(config, fetcher?)` in `server/email/providers/resend.ts` validates the existing private Resend settings and returns `sendEmail({ to, subject, text })`. A future runtime caller will supply `useRuntimeConfig()`. No environment reads, event retention, startup requirements or auth callbacks are added by the transport. The sender remains configurable; changing to a verified domain only requires changing `NUXT_EMAIL_FROM`.
 
 The sender uses native `fetch` to POST bearer-authenticated JSON to [Resend's send API](https://resend.com/docs/api-reference/emails/send-email), without an SDK or new dependencies. `AbortSignal.timeout(10_000)` bounds both the request and response body consumption. Native fetch is used here because installed ofetch 1.5.1 clears its built-in timeout after receiving headers, before reading the body. Redirects are rejected and POST requests are never automatically retried.
 

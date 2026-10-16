@@ -2,7 +2,7 @@
 
 ## Test projects
 
-`vitest.config.ts` defines `unit` (Node, pure configuration and auth-boundary tests), `nuxt` (Nuxt runtime via `defineVitestProject`, currently no cases), and `e2e` (Node plus `@nuxt/test-utils/e2e`, a real built Nitro server). The lockfile resolves Vitest 4.1.11 and Nuxt Test Utils 4.2.0. No browser harness, coverage gate or required CI workflow is implemented.
+`vitest.config.ts` defines `unit` (Node, pure configuration and auth-boundary tests), `nuxt` (Nuxt runtime via `defineVitestProject`, currently no cases), and `e2e` (Node plus `@nuxt/test-utils/e2e`, a real built Nitro server). The lockfile resolves Vitest 4.1.11 and Nuxt Test Utils 4.3.3. No browser harness, coverage gate or required CI workflow is implemented.
 
 Use the [README command table](../README.md#development-and-validation-commands) for lint, typecheck, unit tests and build. `pnpm test:run` includes database mutations; it requires the explicit disposable target below. Missing infrastructure fails rather than silently skipping the suite. No Markdown-specific validation script exists.
 

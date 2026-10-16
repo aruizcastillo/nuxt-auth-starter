@@ -44,7 +44,7 @@ async function post(path: string, body: unknown, cookie = '') {
   })
   const response = await request()
   if (response.status !== 429) return response
-  // The production server keeps Better Auth 1.7.3's 3 requests/10s rule.
+  // The production server keeps Better Auth 1.7.9's 3 requests/10s rule.
   // Honor its actual backoff header once; never mask a repeated rejection.
   noSessionCookie(response)
   const seconds = Number(response.headers.get('x-retry-after'))

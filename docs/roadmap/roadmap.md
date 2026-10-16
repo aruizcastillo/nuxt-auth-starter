@@ -16,9 +16,9 @@ Complete the server's email/password, verified-email, recovery and Google polici
 
 ### Preconditions
 
-- Phase 3's handler, shared auth factory, migration and live-server fixtures pass. Recheck Better Auth/adapter 1.7.3 and Zod 4.5.4 against installed source/types.
+- Phase 3's handler, shared auth factory, migration and live-server fixtures pass. Recheck Better Auth/adapter 1.7.9 and Zod 4.6.7 against installed source/types.
 - Obtain a Resend sending key, verified sender, controlled recipient mailbox and Google web OAuth credentials. Use [README configuration](../../README.md#environment-configuration). These external resources were not created during planning.
-- Read the official Better Auth setup, email/password and security skills, but verify their generic examples against 1.7.3. In particular, do not copy unpinned CLI commands, obsolete hooks or old rate-limit custom storage APIs.
+- Read the official Better Auth setup, email/password and security skills, but verify their generic examples against 1.7.9. In particular, do not copy unpinned CLI commands, obsolete hooks or old rate-limit custom storage APIs.
 
 ### Boundary acceptance
 
@@ -29,7 +29,7 @@ Complete the server's email/password, verified-email, recovery and Google polici
 
 - [ ] Implement `server/email/providers/resend.ts` as one typed Resend sender. POST to `https://api.resend.com/emails` with bearer authentication and `from`, `to`, `subject` and text content. Use a bounded timeout and no blind automatic POST retries; validate success and classify provider errors without logging request bodies. [Resend send API](https://resend.com/docs/api-reference/emails/send-email).
 - [ ] Connect `emailVerification.sendVerificationEmail` and `emailAndPassword.sendResetPassword` to the sender, preserving Better Auth's supplied URL. Do not generate verification/reset tokens, store duplicate tokens or replace their expiry checks. Use simple text emails; no template platform is required.
-- [ ] Connect `advanced.backgroundTasks.handler` to the current Nitro event's supported `waitUntil` lifetime. Extend `server/utils/auth.ts` to pass a request-scoped scheduler into the factory; never retain an event globally. In both email callbacks, register the actual delivery promise with that scheduler and resolve after registration. Installed 1.7.3's resend path directly awaits `sendVerificationEmail`, so the background option alone does not make every callback nonblocking. Verify the installed H3/Nitro event API and Vercel preset before deployment. [Better Auth options](https://better-auth.com/docs/reference/options), [H3 event lifetime](https://h3.dev/guide/api/h3event).
+- [ ] Connect `advanced.backgroundTasks.handler` to the current Nitro event's supported `waitUntil` lifetime. Extend `server/utils/auth.ts` to pass a request-scoped scheduler into the factory; never retain an event globally. In both email callbacks, register the actual delivery promise with that scheduler and resolve after registration. Installed 1.7.9's resend path directly awaits `sendVerificationEmail`, so the background option alone does not make every callback nonblocking. Verify the installed H3/Nitro event API and Vercel preset before deployment. [Better Auth options](https://better-auth.com/docs/reference/options), [H3 event lifetime](https://h3.dev/guide/api/h3event).
 - [ ] Ensure sending does not create an account-existence timing distinction, and scheduled failures reach sanitized operational reporting. Do not use a detached `void sendEmail()` that Vercel may terminate. Add a test proving the promise is registered with the event lifecycle and rejection is handled.
 - [ ] Verify real receipt and usable links with a controlled mailbox. Test provider timeout, 429, rejected sender and invalid key using an injected test transport, not actual repeated mail. User-facing acceptance means the request was accepted, not proof of inbox delivery.
 
@@ -77,7 +77,7 @@ Connect Better Auth's authoritative session to Nuxt SSR and navigation, with ser
 
 ### Preconditions
 
-- Phase 4's server policies, real handler and tests pass. Relevant versions are Nuxt 4.5.2, Better Auth 1.7.3, Vue 3.5.42 and i18n 10.6.0.
+- Phase 4's server policies, real handler and tests pass. Relevant versions are Nuxt 4.6.1, Better Auth 1.7.9, Vue 3.5.44 and i18n 10.6.0.
 - Installed `better-auth/dist/client/vue/index.d.mts` confirms the Nuxt overload `useSession(useFetch)`. Its implementation uses a stable Nuxt fetch key and watches the Better Auth session signal. The returned SSR overload has `data`, `error` and a resolved `isPending: false`; do not assume it exposes every AsyncData method.
 - Keep `no_prefix` locale routing. The chosen route contract is `/sign-in`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` and `/account`; full screens belong to Phase 6.
 
@@ -97,7 +97,7 @@ Connect Better Auth's authoritative session to Nuxt SSR and navigation, with ser
 
 ### 3. Resolve sessions correctly during SSR, hydration and client navigation.
 
-- [ ] Use `await authClient.useSession(useFetch)` in setup and route middleware for session-dependent rendering. This is the documented 1.7.3 Nuxt integration; no manual cookie forwarding is needed. [Better Auth Nuxt integration](https://better-auth.com/docs/integrations/nuxt).
+- [ ] Use `await authClient.useSession(useFetch)` in setup and route middleware for session-dependent rendering. This is the documented 1.7.9 Nuxt integration; no manual cookie forwarding is needed. [Better Auth Nuxt integration](https://better-auth.com/docs/integrations/nuxt).
 - [ ] Fetch `/api/account` with relative `useFetch` from the account page so Nuxt carries the current request context and reuses hydration data. Keep its result as account-page data, not another authentication authority.
 - [ ] Preserve the library's cache key/session signal behavior. Do not use the client-only `useSession()` overload as the source of protected SSR HTML, or wrap protected content in `ClientOnly` to hide a mismatch.
 - [ ] Add concurrent user-A/user-B SSR requests and compare their rendered payloads to detect cross-request state leakage. Test authenticated refresh, guest refresh and navigation with revoked cookies.
@@ -146,7 +146,7 @@ Deliver usable, localized and accessible authentication/account screens on the s
 ### Preconditions
 
 - Phases 3–5 pass, including email, recovery, Google, account ownership and route-shell behavior. Preserve the Phase 5 URL contract and middleware.
-- Relevant resolved versions: vee-validate 5.0.0-beta.1, Zod 4.5.4, Vue 3.5.42, Reka UI 2.10.4, shadcn-nuxt 2.8.2, Tailwind 4.3.3 and i18n 10.6.0. Read the Vue, shadcn-vue, Reka and i18n skills before their implementation work.
+- Relevant resolved versions: vee-validate 5.0.0-beta.1, Zod 4.6.7, Vue 3.5.44, Reka UI 2.11.0, shadcn-nuxt 2.8.2, Tailwind 4.3.3 and i18n 10.6.0. Read the Vue, shadcn-vue, Reka and i18n skills before their implementation work.
 - Reuse existing `UiInput`, field/label/error components, button, card, spinner, skeleton and `UiPageContainer`. `app/app.vue` already mounts a toaster and sets reactive HTML language. `components.json` owns `app/components/ui/` and `app/lib/utils.ts`.
 
 ### 1. Build registration, sign-in and Google sign-in screens.
@@ -187,7 +187,7 @@ Deliver usable, localized and accessible authentication/account screens on the s
 
 - [ ] For each screen define and implement idle, submitting, success and error behavior; include network timeout, 429, invalid credentials, unverified identity, Google cancellation/collision and email-delivery uncertainty where relevant.
 - [ ] Block duplicate mutations and expose visible pending text/spinners. Keep operation-specific state local; ensure an error restores usable controls and does not strand focus on a disabled element.
-- [ ] Honor Better Auth's returned rate-limit retry header (1.7.3 documents `X-Retry-After`) for useful retry messaging. UI throttling is only feedback; the server remains authoritative.
+- [ ] Honor Better Auth's returned rate-limit retry header (1.7.9 documents `X-Retry-After`) for useful retry messaging. UI throttling is only feedback; the server remains authoritative.
 - [ ] Clear password fields after success/navigation, never place them in URLs, and preserve non-sensitive fields on recoverable errors. Avoid optimistic success when the API returned an error object.
 - [ ] Add behavioral tests for double submit, slow response, invalid/expired links, rate limit and provider failure. Do not replace these with static snapshots alone.
 
@@ -221,8 +221,8 @@ Complete the tests introduced during Phases 3–6 and make meaningful validation
 ### Preconditions
 
 - Phases 3–6 already contain config/schema/redirect unit tests, Nuxt component/middleware tests and live-server auth/account tests.
-- Recheck Vitest 4.1.11, Nuxt Test Utils 4.2.0, Vue Test Utils 2.5.0, happy-dom 20.14.0, TypeScript 6.0.3 and the Phase 1 Node/pnpm pair.
-- The current test projects are described in [testing](../testing.md). Nuxt Test Utils 4.2.0 exports `e2e` and `playwright`; Playwright is an optional peer, not an installed direct project dependency. Add a browser dependency only for this concrete browser-testing requirement.
+- Recheck Vitest 4.1.11, Nuxt Test Utils 4.3.3, Vue Test Utils 2.5.1, happy-dom 20.14.6, TypeScript 6.0.3 and the Phase 1 Node/pnpm pair.
+- The current test projects are described in [testing](../testing.md). Nuxt Test Utils 4.3.3 exports `e2e` and `playwright`; Playwright is an optional peer, not an installed direct project dependency. Add a browser dependency only for this concrete browser-testing requirement.
 
 ### 1. Define test-specific environment configuration.
 
@@ -296,7 +296,7 @@ Verify production security assumptions and document manageable operational recov
 ### Preconditions
 
 - Phases 1–7 pass. Inspect final auth options, built responses and test fixtures rather than assuming defaults alone establish security.
-- Recheck Better Auth/adapter 1.7.3, Drizzle RC.4 and deployment behavior. The installed security skill has some generic legacy examples; current 1.7.3 docs/types take precedence where they differ (for example atomic rate-limit consumption).
+- Recheck Better Auth/adapter 1.7.9, Drizzle RC.4 and deployment behavior. The installed security skill has some generic legacy examples; current 1.7.9 docs/types take precedence where they differ (for example atomic rate-limit consumption).
 - Use test/preview targets and controlled accounts. No production credentials or external infrastructure changes were made while writing this plan.
 
 ### 1. Verify trusted origins, secure cookies, CSRF protection and safe redirects.
@@ -339,7 +339,7 @@ Verify production security assumptions and document manageable operational recov
 ### 6. Document secret rotation, database recovery and failed-deployment handling.
 
 - [ ] Create the operations runbook to be added to `docs/deployment.md` listing secret owners, storage location, rotation sequence and verification for auth secret, Neon password, Google secret and Resend key; record no actual values.
-- [ ] For auth-secret rotation, inspect 1.7.3's supported rotation options and document effects on sessions, verification links and any encrypted stored OAuth data. Do not assume changing one string preserves all encrypted material; require reauthentication/relinking where necessary.
+- [ ] For auth-secret rotation, inspect 1.7.9's supported rotation options and document effects on sessions, verification links and any encrypted stored OAuth data. Do not assume changing one string preserves all encrypted material; require reauthentication/relinking where necessary.
 - [ ] Document Neon's configured restore retention, responsible operator and restore-to-new-branch/cutover procedure, with checks of schema, migrated version and user/session consistency. A complete database-recovery rehearsal remains deferred. [Neon recovery](https://neon.com/docs/introduction/branch-restore).
 - [ ] Describe failed migration/deployment handling: stop rollout, identify the last compatible application/schema pair, preserve migration history, prefer forward correction, and roll back application code only when schema-compatible. Never run destructive reverse SQL automatically.
 - [ ] Include email-provider outage handling, investigation using safe event IDs, user resend/recovery guidance and credential compromise response. Keep this a short runbook, not a new monitoring platform.

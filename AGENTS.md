@@ -66,7 +66,7 @@ framework/library primitive
 → application code
 ```
 
-Keep integration-specific configuration, validation and implementation in the owning module, for example `database/providers/neon.ts`, `email/providers/resend.ts` or `auth/providers/google.ts`. Provider-independent domain logic stays outside it; consumers use a simple owning-module boundary rather than importing provider internals.
+Keep integration-specific configuration, validation and implementation in the owning module, for example `database/providers/neon.ts` or `email/providers/resend.ts`. Provider-independent domain logic stays outside it; consumers use a simple owning-module boundary rather than importing provider internals.
 
 Prefer composition over generic registries or plugin systems. If removing or replacing an integration requires changes to unrelated code, review that boundary before proceeding.
 

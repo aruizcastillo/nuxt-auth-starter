@@ -30,8 +30,6 @@ export default defineNuxtConfig({
     databaseUrl: '',
     betterAuthSecret: '',
     betterAuthUrl: '',
-    googleClientId: '',
-    googleClientSecret: '',
     resendApiKey: '',
     emailFrom: '',
   },

@@ -22,21 +22,23 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 `test/unit/resend.test.ts` exercises the isolated Resend sender with an injected fetch function and native `Response` objects. It covers acceptance and payload shape, configurable sender, malformed JSON and success schemas, key/permission errors, sender rejection, HTTP 429, provider failures, network errors, sanitized exceptions and absence of automatic retries/logging. Two tests exercise the real ten-second abort deadline while waiting for headers or consuming a stalled body. No emails are sent and no Resend credentials or database are needed for these tests. Run `pnpm test:run --project unit`.
 
-`test/unit/email.test.ts` covers registration before I/O, completion of the callback while delivery is pending, one task per send, correlated requested/accepted/failure events including Resend's `providerMessageId`, sanitized timeout/401/429/403/5xx failures and registration failure without detached I/O. `test/unit/background.test.ts` covers preset selection, unavailable support, malformed Vercel contexts and concurrent request isolation through the actual installed `@vercel/functions` helper. The helper is not mocked; its internal context reader is supplied by the test. `test/unit/auth-boundaries.test.ts` exercises the real Better Auth handler with incomplete email settings: callbacks remain configured, preflight returns a fixed 503 before any database query, and direct `auth.api` preparation errors are sanitized.
-
-Real inbox delivery and deployed serverless lifetime require the separate [controlled preview checks](deployment.md#background-tasks).
+`test/unit/email.test.ts` checks that the email service waits for acceptance and propagates sanitized failures. Runtime unit cases supply only configuration and provider fetch: they check initialization without I/O, shared transport across requests, missing development settings, strict configuration failures, per-event registration, rejection observation and registration failure without detached I/O. Mounted HTTP tests remain authoritative for Nitro lifecycle and real sessions.
 
 ## HTTP coverage
 
-`test/e2e/auth-server.test.ts` exercises the existing catch-all against the real Nitro server and explicitly allowlisted disposable database. It covers required registration fields, invalid email, rejected 7/129 and accepted 8/128 password lengths, duplicate registration, persisted user/credential/session records, native hash verification, successful sign-in, identical unknown-account/wrong-password responses, secure cookie issuance, database session revocation and repeated sign-out with stale or absent cookies. Fixtures remove only their own users, accounts, sessions and reset verification records.
+`test/e2e/auth-server.test.ts` builds and starts Nitro against the explicitly allowlisted disposable database. Test-only email and session routes are configured solely by the suite. The email fixture plugin runs before the application's scanned startup plugin, so the initialized sender captures only intercepted provider fetch.
 
-The real server retains Better Auth's production rate limiter. The test POST helper honors the installed version's `X-Retry-After` header on HTTP 429 once (credentials: 3 requests/10 seconds; email: 3/60 seconds), and lets a repeated rejection fail the endpoint assertion. The email failure case allows 90 seconds to honor that backoff. Security is not disabled for fixtures.
+Credential tests cover validation, bounds, native normalization/hash persistence, generic duplicate registration, cookie attributes, expiry and sign-out. Successful credential sessions follow captured native verification links; database flags are never used to bypass verification. Registration and verification create no session; sign-in before verification returns 403.
 
-The same suite exercises registration email, explicit resend and recovery through the mounted routes. A test-only Nitro plugin intercepts only native fetch calls to Resend, retaining the real transport, auth handler and database. Its control route and plugin are registered solely by the e2e build configuration; they are absent from ordinary builds. Tests hold delivery pending while HTTP completes, follow captured native verification/reset links and verify database effects and new-password sign-in. A provider HTTP 429 and an unknown account produce the same recovery acknowledgement. Unit cases cover the other transport failure codes without repeating slow HTTP cases. No real emails are sent.
+The key Node lifecycle test blocks the transport, receives signup/resend HTTP acknowledgements with provider work still pending, then releases and observes acceptance. Recovery uses captured single-use links and checks all earlier sessions are revoked, the old password fails and new sign-in succeeds. Provider rejection and a real ten-second timeout preserve generic recovery responses and allow subsequent verification. Unit transport tests retain the other error classifications.
 
-Additional cases call the real Better Auth handler with `Request` objects and the same isolated database, constructing auth per request. They verify login, persisted sessions, logout and native verification/reset-link consumption with incomplete Resend settings or missing Vercel context. Sending routes return the same controlled 503 for existing and unknown accounts; a passthrough query spy verifies no database queries occur. Only provider fetch is replaced. Successful requests also verify that hook and callback prepare once per request and distinct requests prepare separately.
+The session fixture exposes only `requireSession()` for tests. It checks guest/expired 401, forged headers, exact user projection and a real unverified session created through an explicit alternative Better Auth configuration. That alternative is not installed in production. A unit check covers lookup-error propagation without converting a failure into a guest.
 
-The e2e setup uses `setupTimeout: 600000` because cold Nitro builds on Windows can exceed the default four-minute setup budget. This changes only build/startup allowance, not individual test deadlines or assertions. HTTP tests do not establish browser hydration or full accessibility coverage.
+The separate development fixture boots real Nuxt without either email setting, verifies that registration can persist an unverified account with no session, checks the observed unavailable-send event and confirms password sign-in stays blocked. The e2e project runs files sequentially: development startup regenerates root `.nuxt` types while the production fixture compiles against them, so parallel execution can lose tsconfig files.
+
+Native production rate limiting stays enabled. The POST helper honors its actual retry header once and fails if rejected again. Longer email-case deadlines allow that backoff; they do not relax assertions. Cold Windows builds retain the ten-minute setup allowance.
+
+Full HTTP tests do not establish serverless lifetime, real inbox receipt, browser hydration or complete accessibility. See [deployment acceptance](deployment.md#background-tasks).
 
 ## Test target and commands
 
@@ -55,7 +57,7 @@ DATABASE_URL=<same pooled test URL>
 DATABASE_URL_UNPOOLED=<direct URL for the same test database>
 ```
 
-The e2e setup supplies its own ephemeral auth secret, canonical HTTPS origin and dummy Resend configuration for the test-only provider fixture, and clears unused Google settings. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
+The e2e setup supplies its own ephemeral auth secret, canonical HTTPS origin and dummy Resend configuration for the test-only provider fixture. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
 
 For migrations in a fresh PowerShell session with no pre-existing database overrides:
 
@@ -72,7 +74,7 @@ pnpm test:run
 
 Close that shell when finished so later development commands do not inherit test settings. Missing/wrong test configuration fails explicitly; it does not skip integration checks. `pnpm test:run --project unit` runs the database-independent unit tests.
 
-The separate Node e2e project uses `@nuxt/test-utils/e2e` to build and start a real Nitro server. An ephemeral secret and HTTPS canonical origin exercise secure cookie attributes; local HTTP transports requests to the test server while explicitly replaying its issued cookie. Tests create unique accounts through the mounted Better Auth endpoints and clean only those accounts and their sessions/credentials. No tables are truncated. Verification-policy work must update the explicitly marked unverified-email expectations.
+The separate Node e2e project uses `@nuxt/test-utils/e2e` to build and start a real Nitro server. An ephemeral secret and HTTPS canonical origin exercise secure cookie attributes; local HTTP transports requests to the test server while explicitly replaying its issued cookie. Tests create unique accounts through the mounted Better Auth endpoints and clean only those accounts and their sessions/credentials. No tables are truncated. Verification is completed through captured links before credential session assertions.
 
 ## Migration validation
 

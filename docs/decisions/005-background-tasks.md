@@ -1,21 +1,23 @@
-# 005 — Isolate background execution by hosting provider
+# 005 — Register email tasks at the HTTP boundary
 
 Status: Accepted
 
 ## Context
 
-Verification and recovery responses must not expose email-provider latency as an account-existence signal. Background work needs an explicit hosting lifecycle; an unregistered promise may be interrupted after the response.
+Authentication emails should not add provider latency to account-dependent responses. The starter needs a small execution boundary, initially verifiable on a persistent Node process, without a hosting-provider framework.
 
 ## Decision
 
-Use isolated `waitUntil` providers: Nitro for local development and persistent Node servers, and Vercel for its serverless runtime. Keep Better Auth and Resend independent of hosting so lifecycle changes stay within their provider.
+Use Nitro 2's request `event.waitUntil` directly in the HTTP integration. Better Auth receives a generic sending callback; email and Resend remain independent of execution lifetime. Remove auth availability preflight, per-request sender preparation, preset selection and execution providers.
 
-Select through `import.meta.preset`, fixed by Nitro during the build from explicit configuration or hosting detection. Support `nitro-dev`, `node-server` and `vercel`; other presets fail explicitly and report `background_tasks_unavailable`. Do not infer hosting compatibility dynamically from a method's presence.
+Initialize the reference sender once through Nitro's synchronous startup lifecycle. Development may omit both email values and report failed attempts without disabling credentials. Production requires valid email settings. Email/password requires verification through native Better Auth options.
+
+Node is the initial acceptance target. Serverless adaptation is a later, localized HTTP-boundary change, based on deployed evidence; do not claim that method presence provides platform support.
 
 ## Consequences
 
-HTTP acknowledgements do not wait for delivery. Accept that `waitUntil` does not guarantee delivery, and keep registration/delivery failures observable without sensitive data. Do not add queues, webhooks or automatic retries.
+Callbacks acknowledge registration, not provider acceptance or inbox delivery. Own events remain sanitized and observable; the service propagates transport errors while the registered task observes them. Native Better Auth endpoint differences remain intact.
 
-Synchronous `await` was rejected because provider latency would affect account-dependent responses. Persistent queues were rejected because durable storage, workers and recovery procedures exceed the current reliability requirement.
+No queue, worker, retries or persistence are introduced. Work may be interrupted by process termination, and timeout/network failure may leave acceptance unknown. Background execution does not guarantee identical account-existence timing.
 
-Review the Vercel provider for simplification or removal with Nuxt 5/Nitro 3. [Deployment](../deployment.md#background-tasks) owns API details, availability checks, execution limits and pending real-environment validation.
+[Authentication](../authentication.md) owns configuration, errors and verification policy. [Deployment](../deployment.md#background-tasks) owns runtime limitations and pending serverless validation.

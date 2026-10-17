@@ -37,6 +37,13 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2025-07-15',
 
+  nitro: {
+    vercel: {
+      // Nitro 2.13.4's automatic version mapping stops at Node 22.
+      functions: { runtime: 'nodejs24.x' },
+    },
+  },
+
   vite: {
     plugins: [
       tailwindcss(),
@@ -51,6 +58,7 @@ export default defineNuxtConfig({
         '../test/unit/**/*.ts',
         '../test/helpers/**/*.ts',
         '../test/e2e/**/*.ts',
+        '../test/fixtures/**/*.ts',
       ],
     },
   },

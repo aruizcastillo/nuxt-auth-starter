@@ -22,13 +22,17 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 `test/unit/resend.test.ts` exercises the isolated Resend sender with an injected fetch function and native `Response` objects. It covers acceptance and payload shape, configurable sender, malformed JSON and success schemas, key/permission errors, sender rejection, HTTP 429, provider failures, network errors, sanitized exceptions and absence of automatic retries/logging. Two tests exercise the real ten-second abort deadline while waiting for headers or consuming a stalled body. No emails are sent and no Resend credentials or database are needed for these tests. Run `pnpm test:run --project unit`.
 
-These tests do not establish real delivery, verification/reset links or serverless background lifetime; those checks belong to the remaining Phase 4 work.
+`test/unit/email.test.ts` covers registration before I/O, completion of the callback while delivery is pending, one task per send, correlated requested/accepted/failure events, sanitized timeout/401/429/403/5xx failures and registration failure without detached I/O. `test/unit/background.test.ts` covers preset selection, unavailable support, malformed Vercel contexts and concurrent request isolation through the actual installed `@vercel/functions` helper. The helper is not mocked; its internal context reader is supplied by the test.
+
+Real inbox delivery and deployed serverless lifetime require the separate [controlled preview checks](deployment.md#background-tasks).
 
 ## HTTP coverage
 
-`test/e2e/auth-server.test.ts` exercises the existing catch-all against the real Nitro server and explicitly allowlisted disposable database. It covers required registration fields, invalid email, rejected 7/129 and accepted 8/128 password lengths, duplicate registration, persisted user/credential/session records, native hash verification, successful sign-in, identical unknown-account/wrong-password responses, secure cookie issuance, database session revocation and repeated sign-out with stale or absent cookies. Fixtures remove only their own users, accounts and sessions.
+`test/e2e/auth-server.test.ts` exercises the existing catch-all against the real Nitro server and explicitly allowlisted disposable database. It covers required registration fields, invalid email, rejected 7/129 and accepted 8/128 password lengths, duplicate registration, persisted user/credential/session records, native hash verification, successful sign-in, identical unknown-account/wrong-password responses, secure cookie issuance, database session revocation and repeated sign-out with stale or absent cookies. Fixtures remove only their own users, accounts, sessions and reset verification records.
 
-The real server retains Better Auth's production rate limiter. The test POST helper honors the installed version's `X-Retry-After` header on HTTP 429 once, checks the delay is within its ten-second credential window, and lets a repeated rejection fail the endpoint assertion. This avoids disabling security or substituting mock request behavior for the credential matrix.
+The real server retains Better Auth's production rate limiter. The test POST helper honors the installed version's `X-Retry-After` header on HTTP 429 once (credentials: 3 requests/10 seconds; email: 3/60 seconds), and lets a repeated rejection fail the endpoint assertion. The email failure case allows 90 seconds to honor that backoff. Security is not disabled for fixtures.
+
+The same suite exercises registration email, explicit resend and recovery through the mounted routes. A test-only Nitro plugin intercepts only native fetch calls to Resend, retaining the real transport, auth handler and database. Its control route and plugin are registered solely by the e2e build configuration; they are absent from ordinary builds. Tests hold delivery pending while HTTP completes, follow captured native verification/reset links and verify database effects and new-password sign-in. A provider HTTP 429 and an unknown account produce the same recovery acknowledgement. Unit cases cover the other transport failure codes without repeating slow HTTP cases. No real emails are sent.
 
 The e2e setup uses `setupTimeout: 600000` because cold Nitro builds on Windows can exceed the default four-minute setup budget. This changes only build/startup allowance, not individual test deadlines or assertions. HTTP tests do not establish browser hydration or full accessibility coverage.
 
@@ -49,7 +53,7 @@ DATABASE_URL=<same pooled test URL>
 DATABASE_URL_UNPOOLED=<direct URL for the same test database>
 ```
 
-The e2e setup supplies its own ephemeral auth secret and canonical HTTPS origin and clears unused provider settings. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
+The e2e setup supplies its own ephemeral auth secret, canonical HTTPS origin and dummy Resend configuration for the test-only provider fixture, and clears unused Google settings. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
 
 For migrations in a fresh PowerShell session with no pre-existing database overrides:
 

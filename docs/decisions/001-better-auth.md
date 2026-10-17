@@ -16,4 +16,4 @@ Preserve Better Auth's normal implicit account linking for trustworthy OAuth ide
 
 ## Consequences
 
-Neon supplies persistence, not a second auth authority: Neon Auth and its application configuration/deployment layer are unused. A client session store or auth proxy requires a demonstrated requirement. Google composition and delivery are still planned; see [current authentication](../authentication.md) and the [roadmap](../roadmap/roadmap.md#phase-4).
+Neon supplies persistence, not a second auth authority: Neon Auth and its application configuration/deployment layer are unused. A client session store or auth proxy requires a demonstrated requirement. See [current authentication](../authentication.md) for implementation details and the [roadmap](../roadmap/roadmap.md#phase-4) for remaining work.

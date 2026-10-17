@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 import { createDatabase, type Database } from '../../server/database'
-import { account, session, user } from '../../server/database/schema/auth'
+import { account, session, user, verification } from '../../server/database/schema/auth'
 import { parseDatabaseConfig } from '../../server/database/config'
 
 // Explicitly allow only the disposable branch verified through Neon metadata.
@@ -29,6 +29,7 @@ export function authFixtures(db: Database) {
       if (!emails.length) return
       const rows = await db.select({ id: user.id }).from(user).where(inArray(user.email, emails))
       for (const row of rows) {
+        await db.delete(verification).where(eq(verification.value, row.id))
         await db.delete(session).where(eq(session.userId, row.id))
         await db.delete(account).where(eq(account.userId, row.id))
         await db.delete(user).where(eq(user.id, row.id))

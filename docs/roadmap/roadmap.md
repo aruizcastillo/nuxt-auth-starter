@@ -27,32 +27,19 @@ Complete the server's email/password, verified-email, recovery and Google polici
 - [ ] Keep email/password directly configured in Better Auth, Google in its concrete provider module, and email callbacks using a simple sendEmail boundary. No registries or mirrored feature configuration.
 - [ ] Verify authenticated users/accounts, sessions and authorization with credentials+Google, credentials-only and Google-only. Credentials UI/flows may be removed manually. Removing Google must remove its settings requirements without changing core identity handling.
 
-### 2. Connect real email delivery for verification and password recovery, following [Better Auth's email guidance](https://better-auth.com/docs/concepts/email).
+### 2. Verify real email delivery and the deployed Vercel lifecycle.
 
-The isolated transport is described in [authentication](../authentication.md#isolated-email-transport), with automated coverage in [testing](../testing.md#email-transport-coverage). The following integration work remains pending; step 2 is not complete.
+Current callbacks, transport and background providers are described in [authentication](../authentication.md#verification-and-recovery-delivery), [testing](../testing.md#email-transport-coverage) and [deployment](../deployment.md#background-tasks).
 
-**Required behavior and guarantees**
-
-- [ ] Connect verification and password-reset emails to the existing Resend transport using simple text messages. Better Auth owns tokens, URLs, expiry and validation; preserve its supplied links.
-- [ ] Keep provider delivery time and failures out of account-existence signals in HTTP responses. Handle delivery failures through sanitized operational reporting, without exposing recipients, credentials or token-bearing URLs.
-- [ ] Verify background-task lifecycle support in the runtime used and handle any limitation explicitly, without silently losing sends or weakening security and error handling. Support for arbitrary runtimes or complex fallback mechanisms is not required.
-- [ ] Keep email independent of Nitro and Vercel, and isolate platform-specific integration. Preserve the transport's timeout and absence of automatic retries. Request acceptance and Resend acceptance do not establish inbox delivery.
-- [ ] Test callback links, task registration, response independence from a pending delivery, sanitized rejection handling and missing lifecycle support. Use an injected transport for timeout, 429, rejected-sender and invalid-key cases; retain existing transport coverage. Verify real receipt and usable links with a controlled mailbox and confirm the deployed Vercel lifecycle.
-
-**Proposed implementation — verify before implementation**
-
-- Use `server/email/index.ts` as the email module entry point, reusing the Resend transport and accepting an injected task-registration function. Keep Nitro/Vercel imports out of this module. Compose it per request in `server/utils/auth.ts` and supply the prepared sender to the auth factory.
-- Connect `emailVerification.sendVerificationEmail` and `emailAndPassword.sendResetPassword` in `server/auth/options.ts` to that sender. Register the actual delivery promise with rejection handling, then resolve the callback without awaiting delivery. Better Auth 1.7.9 directly awaits the verification-resend callback; this approach covers that path without also configuring `advanced.backgroundTasks.handler`. Verify the installed callback behavior before wiring it. [Better Auth options](https://better-auth.com/docs/reference/options).
-- Verify the actual task-registration API in the installed Nitro 2 types/source, including the applicability of `event.waitUntil` or `event.req.waitUntil`, and its connection to Vercel's lifecycle. A small `server/plugins/vercel.ts` bridge to the official `@vercel/functions` helper remains proposed, loaded and activated only on Vercel if needed. Confirm API and package compatibility, request-context delegation and behavior when lifecycle support is absent before implementation. [Nitro 2 plugins](https://v2.nitro.build/guide/plugins), [Vercel waitUntil](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#waituntil).
-- Treat the bridge as integration for the current versions. Reevaluate whether it is needed during the planned Nuxt 5 / Nitro 3 migration.
+- [ ] Complete the controlled preview/mailbox checks documented in deployment: real receipt, usable environment-correct links, completion after the response and sanitized provider-failure reporting. Fixtures cannot establish these external guarantees.
 
 ### 3. Define verified-email access and password-reset session behavior.
 
-- [ ] Set `emailAndPassword.requireEmailVerification: true`, `emailVerification.sendOnSignUp: true`, and choose `autoSignInAfterVerification: false` so verification leads to explicit sign-in. Document link lifetimes from the actual configured options. [Email verification guidance](https://better-auth.com/docs/concepts/email).
+- [ ] Set `emailAndPassword.requireEmailVerification: true` and choose `autoSignInAfterVerification: false` so verification leads to explicit sign-in. Preserve the existing registration email trigger. [Email verification guidance](https://better-auth.com/docs/concepts/email).
 - [ ] Add `server/utils/require-session.ts`: resolve identity using `auth.api.getSession({ headers: event.headers })`, return 401 for absent/expired identity and 403 with a stable safe code for an unverified identity. Return only the server-verified user needed by callers. The verified-email rule must apply to Google sessions too; the credential option alone does not enforce that.
 - [ ] Set `emailAndPassword.revokeSessionsOnPasswordReset: true`. Require sign-in with the new password after reset; retain disabled cookie caching so old sessions cannot survive in a cache.
 - [ ] Add integration cases for sign-in before/after verification, missing/tampered/expired verification and recovery tokens, repeated reset-token use, old-password rejection and revocation of two preexisting sessions. Test documented verification replay behavior rather than inventing a token contract.
-- [ ] Capture callback URLs through the test email transport and exercise Better Auth's real token endpoints. Never set `emailVerified` directly merely to bypass verification in end-to-end tests.
+- [ ] Extend the existing captured-link fixture for these policy cases. Never set `emailVerified` directly merely to bypass verification in end-to-end tests.
 
 ### 4. Configure Google OAuth credentials, callbacks and account-linking policy.
 

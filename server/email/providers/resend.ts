@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { formatConfigError } from '../../utils/config-error'
+import type { Email } from '../index'
 
 const resendConfigSchema = z.object({
   resendApiKey: z.string().trim().min(1),
@@ -14,12 +15,6 @@ export function parseResendConfig(config: unknown) {
   const result = resendConfigSchema.safeParse(config)
   if (!result.success) throw new Error(formatConfigError(result.error))
   return result.data
-}
-
-export interface ResendEmail {
-  to: string
-  subject: string
-  text: string
 }
 
 export type ResendErrorCode = 'authentication' | 'rate_limit' | 'rejected' | 'provider' | 'timeout' | 'network' | 'invalid_response'
@@ -46,11 +41,11 @@ function classifyFailure(status: number, data: unknown): ResendErrorCode {
   return 'rejected'
 }
 
-// The future runtime caller supplies useRuntimeConfig(); no request is retained.
+// The runtime caller supplies useRuntimeConfig(); no request is retained.
 export function createResendSender(config: unknown, fetcher: typeof fetch = fetch) {
   const settings = parseResendConfig(config)
 
-  return async function sendEmail({ to, subject, text }: ResendEmail): Promise<{ id: string }> {
+  return async function sendEmail({ to, subject, text }: Email): Promise<{ id: string }> {
     // Native fetch keeps this deadline active through body consumption, too.
     const signal = AbortSignal.timeout(10_000)
     try {

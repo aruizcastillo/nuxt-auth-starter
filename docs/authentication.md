@@ -20,7 +20,7 @@ Recovery also uses the native callback and link. A successful reset consumes its
 
 `server/utils/require-session.ts` exports `requireSession(event)`. It reads Better Auth's session using the request headers and returns only `{ id, name, email, emailVerified }`. A missing/expired session raises HTTP 401 with `data.code: UNAUTHENTICATED`. Lookup errors propagate as server errors.
 
-The helper does not infer an authentication method or require `emailVerified`. It preserves that field's actual value. Email/password verification is enforced by Better Auth during credential sign-in; OAuth applies its own provider policy. Any stricter resource authorization must be explicit. A client redirect or caller-supplied identity header is never an authorization source. No account API or client auth state is implemented yet.
+The helper does not infer an authentication method or require `emailVerified`. It preserves that field's actual value. Email/password verification is enforced by Better Auth during credential sign-in. Any stricter resource authorization must be explicit. A client redirect or caller-supplied identity header is never an authorization source. No account API or client auth state is implemented yet.
 
 ## Configuration and initialization
 
@@ -54,11 +54,10 @@ The transport uses native `fetch`, rejects redirects, never automatically retrie
 
 ## Adapting authentication methods
 
-Methods are changed deliberately through Better Auth's native options, not environment-derived feature flags or registries.
+The reference runtime uses email/password only. Methods can be combined or replaced deliberately through Better Auth's native options, without environment-derived feature flags or registries. Google OAuth and account linking are an [optional future extension](roadmap/roadmap.md#planned-future-work); no Google module, credentials or validated integration are included.
 
 - **Credentials only:** keep the reference composition and configure its email transport.
-- **Credentials plus Google:** compose `createGoogleProvider(config)` into native `socialProviders`, configure both Google credentials and review the existing linking policy. Google is not connected in the reference runtime yet.
-- **OAuth only:** disable/remove `emailAndPassword` and remove `sendResetPassword`. In 1.7.9, `enabled: false` alone does not disable recovery when its callback remains. Review `emailVerification.sendVerificationEmail`, `sendOnSignUp`, `sendOnSignIn`, `autoSignInAfterVerification` and related options against the chosen OAuth provider policy; remove the entire block if unused. `sendOnSignUp` can also send to new OAuth users whose provider reports an unverified address. Keep the real `emailVerified` field and evaluate each provider's verification guarantees.
+- **Replace credentials in a derived project:** review the entire native method configuration, including recovery and verification callbacks. In 1.7.9, `emailAndPassword.enabled: false` alone does not disable recovery when `sendResetPassword` remains. Preserve the actual `emailVerified` value and keep method policy separate from resource authorization.
 - **Remove unused mail:** remove the startup plugin, runtime sender and scheduling composition, email-module imports/types, provider files and unused `runtimeConfig` keys/environment values. Adjust setup documentation and email fixtures/tests. Preserve session lookup and the native auth handler.
 - **Replace Resend:** replace the transport and provider-specific configuration/error mapping in the email module, then update environment settings, setup and transport fixtures/tests. Better Auth and HTTP scheduling do not change.
 

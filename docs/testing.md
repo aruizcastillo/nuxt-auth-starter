@@ -57,7 +57,7 @@ DATABASE_URL=<same pooled test URL>
 DATABASE_URL_UNPOOLED=<direct URL for the same test database>
 ```
 
-The e2e setup supplies its own ephemeral auth secret, canonical HTTPS origin and dummy Resend configuration for the test-only provider fixture, and clears unused Google settings. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
+The e2e setup supplies its own ephemeral auth secret, canonical HTTPS origin and dummy Resend configuration for the test-only provider fixture. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
 
 For migrations in a fresh PowerShell session with no pre-existing database overrides:
 

@@ -1,7 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createAuth } from '../../server/auth/options'
-import { createGoogleProvider } from '../../server/auth/providers/google'
 import { createDatabase } from '../../server/database'
 import { parseAuthConfig } from '../../server/auth/config'
 
@@ -9,11 +8,10 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('Better Auth method boundaries', () => {
   it.each([
-    { credentials: true, google: true },
-    { credentials: true, google: false },
-    { credentials: false, google: true },
-    { credentials: undefined, google: true },
-  ])('initializes and reads an anonymous session with credentials=$credentials Google=$google', async ({ credentials, google }) => {
+    { credentials: true },
+    { credentials: false },
+    { credentials: undefined },
+  ])('initializes and reads an anonymous session with credentials=$credentials', async ({ credentials }) => {
     const baseline = createAuth(parseAuthConfig({
       betterAuthSecret: 'boundary-test-secret-with-at-least-32-characters',
       betterAuthUrl: 'https://auth.example.test',
@@ -33,10 +31,7 @@ describe('Better Auth method boundaries', () => {
     const auth = betterAuth({
       ...coreOptions,
       ...(credentials === undefined ? {} : { emailAndPassword: { enabled: credentials } }),
-      ...(google ? { socialProviders: createGoogleProvider({ googleClientId: 'test-id', googleClientSecret: 'test-secret' }) } : {}),
     })
-    const context = await auth.$context
-    expect(context.socialProviders.map(provider => provider.id)).toEqual(google ? ['google'] : [])
     expect(await auth.api.getSession({ headers: new Headers() })).toBeNull()
     expect(auth.options.session?.cookieCache?.enabled).toBe(false)
   })

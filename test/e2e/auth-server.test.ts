@@ -40,8 +40,6 @@ await setup({
     NUXT_DATABASE_URL: target.databaseUrl,
     NUXT_BETTER_AUTH_SECRET: secret,
     NUXT_BETTER_AUTH_URL: origin,
-    NUXT_GOOGLE_CLIENT_ID: '',
-    NUXT_GOOGLE_CLIENT_SECRET: '',
     NUXT_RESEND_API_KEY: 're_e2e-unused',
     NUXT_EMAIL_FROM: 'Sender <sender@example.test>',
   },

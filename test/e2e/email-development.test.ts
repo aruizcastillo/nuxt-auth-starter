@@ -21,8 +21,6 @@ await setup({
     NUXT_BETTER_AUTH_URL: origin,
     NUXT_RESEND_API_KEY: '',
     NUXT_EMAIL_FROM: '',
-    NUXT_GOOGLE_CLIENT_ID: '',
-    NUXT_GOOGLE_CLIENT_SECRET: '',
   },
 })
 afterAll(() => fixtures.cleanup())

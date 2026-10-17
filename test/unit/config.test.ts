@@ -27,9 +27,9 @@ describe('private configuration', () => {
     }
   })
 
-  it('ignores optional integration settings, including incomplete or invalid leftovers', () => {
+  it('leaves email integration validation to its owning module', () => {
     expect(parseAuthConfig(auth)).toEqual(auth)
-    expect(parseAuthConfig({ ...auth, googleClientId: 'id', resendApiKey: 'key', emailFrom: 123 })).toEqual(auth)
-    expect(parseAuthConfig({ ...auth, googleClientSecret: false })).toEqual(auth)
+    expect(parseAuthConfig({ ...auth, resendApiKey: 'key', emailFrom: 123 })).toEqual(auth)
+    expect(parseAuthConfig({ ...auth, resendApiKey: false })).toEqual(auth)
   })
 })

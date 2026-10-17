@@ -8,6 +8,8 @@ export default defineConfig({
         test: {
           name: 'e2e',
           include: ['test/e2e/**/*.test.ts'],
+          // Dev startup regenerates the root .nuxt types used by the Node build.
+          fileParallelism: false,
           environment: 'node',
           testTimeout: 30000,
           hookTimeout: 30000,

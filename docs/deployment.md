@@ -2,7 +2,7 @@
 
 ## Current support
 
-`pnpm build` produces the server build and `pnpm preview` runs it locally. `nuxt.config.ts` has no explicit Nitro deployment preset or custom route rules. There is no repository CI/release workflow establishing a verified production deployment. Vercel with Neon is the reference hosting path; the starter is not yet reproducibly production-deployable. PostgreSQL is required, while the database provider can be replaced through the [documented client boundary and setup changes](../README.md#using-another-postgresql-provider).
+`pnpm build` produces the server build and `pnpm preview` runs it locally. `nuxt.config.ts` has no explicit Nitro deployment preset or custom route rules. There is no repository CI/release workflow establishing a verified production deployment. Vercel with Neon remains the reference deployment target, but this delivery implementation targets persistent Node first. The starter is not yet reproducibly production-deployable. PostgreSQL is required, while the database provider can be replaced through the [documented client boundary and setup changes](../README.md#using-another-postgresql-provider).
 
 Use the [README](../README.md#requirements) for the supported Node/pnpm versions and setup commands. This application requires server auth routes; static generation is not its deployment path.
 
@@ -10,23 +10,15 @@ The Vercel function runtime is explicitly `nodejs24.x` through `nitro.vercel.fun
 
 ## Background tasks
 
-`server/background/index.ts` uses `import.meta.preset`, fixed by Nitro during the build from explicit configuration or hosting detection. Auth requests that can send email obtain the corresponding handler during [sender preparation](authentication.md#verification-and-recovery-delivery); other operations do not require it. The host is not detected dynamically. There is no global plugin or shared request state. [ADR 005](decisions/005-background-tasks.md) records the rationale and rejected alternatives.
+The request integration registers the email promise directly with Nitro 2's `event.waitUntil`; it contains no hosting detection or execution providers. The sender is initialized by a synchronous Nitro plugin, with the development/production policy in [authentication](authentication.md#configuration-and-initialization). Only the sender is shared; request events are never retained globally.
 
-| Preset | Provider | Supported lifetime |
-| --- | --- | --- |
-| `nitro-dev`, `node-server` | `providers/nitro.ts` | Local development and persistent Node servers; uses Nitro 2's `event.waitUntil`. |
-| `vercel` | `providers/vercel.ts` | Vercel Node Functions; uses the public `@vercel/functions.waitUntil`. |
-| Anything else | None | Email-sending auth flows fail explicitly; another serverless host needs a verified integration. |
+Nuxt 4.6.1's portable `RequestEvent` does not declare `waitUntil`. Nitro 2.13.4 adds it at runtime, records promises and forwards them when `event.context.waitUntil` exists. A small structural check at registration accommodates the type difference; method presence does not certify hosting lifetime support.
 
-Installed Nuxt 4.6.1's portable `RequestEvent` does not declare `waitUntil`. Nitro 2.13.4 attaches it at runtime and delegates to `event.context.waitUntil` when supplied; its Vercel preset does not wire that context. The Nitro provider checks the actual event method; the Vercel provider registers directly with the hosting helper. See [Nitro 2 runtime](https://github.com/nitrojs/nitro/blob/v2/src/runtime/internal/app.ts) and [Vercel API](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#waituntil).
+The base acceptance target is `node-server`: a persistent Node process can finish sending after returning HTTP. Tests hold the provider pending, receive HTTP, release delivery and observe completion. This is not a queue: process shutdown, restart or failure can interrupt work. There are no automatic retries or durable delivery guarantees.
 
-`@vercel/functions` is pinned to **3.10.1**. Its installed `wait-until.js` silently returns when request context lacks `waitUntil`, and its public exports offer no capability check. To detect that failure, only `providers/vercel.ts` reads the internal `Symbol.for('@vercel/request-context')` reader and verifies its current context has an invocable `waitUntil`, both during assembly and registration. Actual task registration still uses the public helper. Neither a Vercel environment variable nor `getDeadline()` proves this capability. This narrow internal dependency is justified by the no-silent-loss requirement; do not import private package paths or spread this check outside the provider. Recheck the pinned package implementation and tests on upgrade. Official source: [context](https://github.com/vercel/vercel/blob/main/packages/functions/src/get-context.ts), [registration](https://github.com/vercel/vercel/blob/main/packages/functions/src/wait-until.ts).
+**Serverless acceptance is pending.** Installed Nitro 2.13.4's Vercel Node adapter does not itself connect the platform's request lifetime to its event method. Removing the old Vercel integration therefore removes that explicit bridge; do not promote this implementation as verified for Vercel background delivery. A later change must test the deployed path and add only a necessary HTTP-boundary bridge, leaving auth and email unchanged. No `@vercel/functions` application dependency or private Vercel-context access remains.
 
-Missing/invalid support logs only `background_tasks_unavailable` within the provider. Auth sender preparation reports generic unavailability and stops email-sending flows before account lookup, without sending. Later transport/registration failure is reported through the [email events](authentication.md#verification-and-recovery-delivery), preserving native acknowledgements.
-
-Vercel background work shares the function's maximum duration and can be canceled on timeout; process termination can also interrupt work. The transport's ten-second deadline must fit within the remaining function budget, including auth/database work. Provider timeout/network failure can leave acceptance uncertain.
-
-Before treating a Vercel deployment as verified, use an isolated preview and controlled mailbox to send verification and recovery emails, confirm correct environment URLs and usable links, and confirm completion after the HTTP response. Exercise a provider rejection and inspect sanitized logs. Automated fixtures and a local Vercel-preset build do not establish real receipt or deployed lifecycle support; those external checks remain pending in [Phase 9](roadmap/roadmap.md#phase-9).
+Before accepting Vercel, use an isolated Preview and controlled mailbox: receive the HTTP acknowledgement while delivery remains pending, then confirm provider acceptance/receipt, usable environment-correct links and sanitized failure reporting. A fast successful send can finish before HTTP and does not prove lifecycle extension. Respect the remaining function duration, including auth/database work and the transport's ten-second deadline. See [Phase 9](roadmap/roadmap.md#phase-9).
 
 ## Environment isolation
 

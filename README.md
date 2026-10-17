@@ -97,11 +97,11 @@ pnpm auth:secret
 
 The CLI generates a `BETTER_AUTH_SECRET` entry. Copy its value into `NUXT_BETTER_AUTH_SECRET` in your `.env` file.
 
-For the included Resend transport, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required for registration, verification resend and recovery requests. Login, sessions, logout and consumption of existing links do not require email availability. Auth schema tooling does not require email settings.
+For the included Resend transport, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required when starting the production server. In Nuxt development, both may be empty to work without sending mail; partial or invalid settings fail initialization. Credentials stay enabled and require verification: registration without a transport can leave a pending account that cannot sign in. Auth schema tooling does not require email settings.
 
 Resend is the reference email provider. Other providers can be integrated by replacing the email transport and its configuration without changing Better Auth or background execution. See the [email transport boundary](docs/authentication.md#isolated-email-transport) for replacement details.
 
-Background delivery supports local Nitro development, persistent Node servers and Vercel's Node runtime. Other serverless targets require a verified integration; see [deployment](docs/deployment.md#background-tasks).
+Background delivery targets Nitro development and persistent Node servers. Serverless support, including Vercel, needs a later lifecycle adaptation and validation; see [deployment](docs/deployment.md#background-tasks).
 
 Google is planned but not connected yet:
 
@@ -170,7 +170,7 @@ The current Neon implementation uses the HTTP driver for stateless, serverless-f
 
 Better Auth is exposed at `/api/auth` and stores users, sessions, accounts and verification records in PostgreSQL. Follow the environment and database setup above.
 
-See [authentication](docs/authentication.md) for implemented credential and verification/recovery delivery behavior, [Phase 4](docs/roadmap/roadmap.md#phase-4) for pending access/session policies and Google, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real-provider/deployment acceptance.
+See [authentication](docs/authentication.md) for credential verification, reset-session revocation and the session helper, [Phase 4](docs/roadmap/roadmap.md#phase-4) for pending Google and endpoint work, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real-provider/deployment acceptance.
 
 ## Development commands
 

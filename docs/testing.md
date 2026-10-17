@@ -1,16 +1,40 @@
 # Testing
 
+## Validation scope
+
+Choose checks according to the change; these are separate validation paths:
+
+| Command | When to use it |
+| --- | --- |
+| `pnpm test:run --project unit` | Quick feedback from database-independent unit tests. |
+| `pnpm test:run` | Full integration validation, including the HTTP tests' own compilation and test database access. |
+| `pnpm build` | Validate the actual production compilation when relevant, including before deployment. |
+
+Run lint and typecheck when relevant to the change. The full suite builds its own test server; it does not reuse `.output` and does not require a preceding `pnpm build`. A separate production build is not an automatic follow-up to every full test run. Run both when both kinds of evidence are needed. For documentation-only changes, review the diff and affected references.
+
 ## Test projects
 
-`vitest.config.ts` defines `unit` (Node, pure configuration and auth-boundary tests), `nuxt` (Nuxt runtime via `defineVitestProject`, currently no cases), and `e2e` (Node plus `@nuxt/test-utils/e2e`, a real built Nitro server). The lockfile resolves Vitest 4.1.11 and Nuxt Test Utils 4.2.0. No browser harness, coverage gate or required CI workflow is implemented.
+`vitest.config.ts` defines `unit` (Node, pure configuration and auth-boundary tests), `nuxt` (Nuxt runtime via `defineVitestProject`, currently no cases), and `e2e` (Node plus `@nuxt/test-utils/e2e`, a real built Nitro server). The lockfile resolves Vitest 4.1.11 and Nuxt Test Utils 4.3.3. No browser harness, coverage gate or required CI workflow is implemented.
 
-Use the [README command table](../README.md#development-and-validation-commands) for lint, typecheck, unit tests and build. `pnpm test:run` includes database mutations; it requires the explicit disposable target below. Missing infrastructure fails rather than silently skipping the suite. No Markdown-specific validation script exists.
+Use the [README command table](../README.md#development-commands) for lint, typecheck, unit tests and build. `pnpm test:run` includes database mutations; it requires the explicit disposable target below. Missing infrastructure fails rather than silently skipping the suite. No Markdown-specific validation script exists.
+
+## Email transport coverage
+
+`test/unit/resend.test.ts` exercises the isolated Resend sender with an injected fetch function and native `Response` objects. It covers acceptance and payload shape, configurable sender, malformed JSON and success schemas, key/permission errors, sender rejection, HTTP 429, provider failures, network errors, sanitized exceptions and absence of automatic retries/logging. Two tests exercise the real ten-second abort deadline while waiting for headers or consuming a stalled body. No emails are sent and no Resend credentials or database are needed for these tests. Run `pnpm test:run --project unit`.
+
+`test/unit/email.test.ts` covers registration before I/O, completion of the callback while delivery is pending, one task per send, correlated requested/accepted/failure events including Resend's `providerMessageId`, sanitized timeout/401/429/403/5xx failures and registration failure without detached I/O. `test/unit/background.test.ts` covers preset selection, unavailable support, malformed Vercel contexts and concurrent request isolation through the actual installed `@vercel/functions` helper. The helper is not mocked; its internal context reader is supplied by the test. `test/unit/auth-boundaries.test.ts` exercises the real Better Auth handler with incomplete email settings: callbacks remain configured, preflight returns a fixed 503 before any database query, and direct `auth.api` preparation errors are sanitized.
+
+Real inbox delivery and deployed serverless lifetime require the separate [controlled preview checks](deployment.md#background-tasks).
 
 ## HTTP coverage
 
-`test/e2e/auth-server.test.ts` exercises the existing catch-all against the real Nitro server and explicitly allowlisted disposable database. It covers required registration fields, invalid email, rejected 7/129 and accepted 8/128 password lengths, duplicate registration, persisted user/credential/session records, native hash verification, successful sign-in, identical unknown-account/wrong-password responses, secure cookie issuance, database session revocation and repeated sign-out with stale or absent cookies. Fixtures remove only their own users, accounts and sessions.
+`test/e2e/auth-server.test.ts` exercises the existing catch-all against the real Nitro server and explicitly allowlisted disposable database. It covers required registration fields, invalid email, rejected 7/129 and accepted 8/128 password lengths, duplicate registration, persisted user/credential/session records, native hash verification, successful sign-in, identical unknown-account/wrong-password responses, secure cookie issuance, database session revocation and repeated sign-out with stale or absent cookies. Fixtures remove only their own users, accounts, sessions and reset verification records.
 
-The real server retains Better Auth's production rate limiter. The test POST helper honors the installed version's `X-Retry-After` header on HTTP 429 once, checks the delay is within its ten-second credential window, and lets a repeated rejection fail the endpoint assertion. This avoids disabling security or substituting mock request behavior for the credential matrix.
+The real server retains Better Auth's production rate limiter. The test POST helper honors the installed version's `X-Retry-After` header on HTTP 429 once (credentials: 3 requests/10 seconds; email: 3/60 seconds), and lets a repeated rejection fail the endpoint assertion. The email failure case allows 90 seconds to honor that backoff. Security is not disabled for fixtures.
+
+The same suite exercises registration email, explicit resend and recovery through the mounted routes. A test-only Nitro plugin intercepts only native fetch calls to Resend, retaining the real transport, auth handler and database. Its control route and plugin are registered solely by the e2e build configuration; they are absent from ordinary builds. Tests hold delivery pending while HTTP completes, follow captured native verification/reset links and verify database effects and new-password sign-in. A provider HTTP 429 and an unknown account produce the same recovery acknowledgement. Unit cases cover the other transport failure codes without repeating slow HTTP cases. No real emails are sent.
+
+Additional cases call the real Better Auth handler with `Request` objects and the same isolated database, constructing auth per request. They verify login, persisted sessions, logout and native verification/reset-link consumption with incomplete Resend settings or missing Vercel context. Sending routes return the same controlled 503 for existing and unknown accounts; a passthrough query spy verifies no database queries occur. Only provider fetch is replaced. Successful requests also verify that hook and callback prepare once per request and distinct requests prepare separately.
 
 The e2e setup uses `setupTimeout: 600000` because cold Nitro builds on Windows can exceed the default four-minute setup budget. This changes only build/startup allowance, not individual test deadlines or assertions. HTTP tests do not establish browser hydration or full accessibility coverage.
 
@@ -20,38 +44,33 @@ The current integration test setup deliberately remains Neon-specific. Its branc
 
 `test/helpers/auth.ts` is the canonical allowlist for the branch label, exact pooled endpoint and database path. Provision a separate disposable target, verify its Neon identity, and deliberately update that allowlist if it is replaced. Environment configuration alone cannot authorize an arbitrary database. Never point the suite at development or production.
 
-The ignored `.env.test-phase3` is an explicitly selected local test file using **existing variable names only**. The file is not loaded by default.
+The ignored `.env.test` is the single local test configuration file. The current Vitest configuration loads it through Nuxt Test Utils when preparing its Nuxt project. Existing process variables take precedence, so use a fresh shell without development or production database overrides. The test target guard still validates the effective values before database access.
 
-Create `.env.test-phase3` with the established variable names and values for the verified disposable target:
+Create `.env.test` with the established variable names and values for the verified disposable target:
 
 ```dotenv
-NEON_BRANCH=<branch label accepted by test/helpers/auth.ts>
+NEON_BRANCH=test
 NUXT_DATABASE_URL=<pooled test URL>
 DATABASE_URL=<same pooled test URL>
 DATABASE_URL_UNPOOLED=<direct URL for the same test database>
 ```
 
-The e2e setup supplies its own ephemeral auth secret and canonical HTTPS origin and clears unused provider settings. Use plain unquoted values with the PowerShell loader below. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
+The e2e setup supplies its own ephemeral auth secret, canonical HTTPS origin and dummy Resend configuration for the test-only provider fixture, and clears unused Google settings. Check branch, endpoint and database against the allowlist before migrating; the migration command does not invoke the test guard.
 
 For migrations in a fresh PowerShell session with no pre-existing database overrides:
 
 ```powershell
-$env:DOTENV_CONFIG_PATH = '.env.test-phase3'
+$env:DOTENV_CONFIG_PATH = '.env.test'
 pnpm db:migrate
 ```
 
-For tests, supply the test file's existing variables explicitly to the process (dotenv alone does not override existing process variables):
+For tests, the current configuration loads `.env.test` automatically:
 
 ```powershell
-Get-Content .env.test-phase3 | ForEach-Object {
-  if ($_ -match '^([A-Z][A-Z0-9_]*)=(.*)$') {
-    [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-  }
-}
 pnpm test:run
 ```
 
-Close that shell when finished so later development commands do not inherit test settings. Missing/wrong test configuration fails explicitly; it does not skip integration checks. `pnpm exec vitest run --project unit` runs just the pure parser tests without a database.
+Close that shell when finished so later development commands do not inherit test settings. Missing/wrong test configuration fails explicitly; it does not skip integration checks. `pnpm test:run --project unit` runs the database-independent unit tests.
 
 The separate Node e2e project uses `@nuxt/test-utils/e2e` to build and start a real Nitro server. An ephemeral secret and HTTPS canonical origin exercise secure cookie attributes; local HTTP transports requests to the test server while explicitly replaying its issued cookie. Tests create unique accounts through the mounted Better Auth endpoints and clean only those accounts and their sessions/credentials. No tables are truncated. Verification-policy work must update the explicitly marked unverified-email expectations.
 
@@ -59,4 +78,4 @@ The separate Node e2e project uses `@nuxt/test-utils/e2e` to build and start a r
 
 Use a verified empty disposable database, apply the committed migrations, inspect core tables/constraints/indexes and Kit history, then run migrate again and confirm it is a no-op. Do not reset a branch from a populated parent and call that an empty replay. 
 
-For drift checks, use a disposable checkout: regenerate and format the auth schema as described in [database](database.md#auth-schema-and-generation), run `pnpm db:generate`, and inspect for unexpected schema or migration changes. Do not rewrite applied migrations or commit drift automatically. CI automation, browser coverage and external-provider acceptance are [future work](roadmap/roadmap.md#phase-7).
+For drift checks, use a disposable checkout: regenerate and format the auth schema as described in [database](database.md#auth-schema-and-generation), run `pnpm db:generate`, and inspect for unexpected schema or migration changes. Do not rewrite applied migrations or commit drift automatically. CI automation and browser coverage remain in [Phase 7](roadmap/roadmap.md#phase-7); real-provider/deployment acceptance belongs to [Phase 9](roadmap/roadmap.md#phase-9).

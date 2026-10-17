@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 import { createDatabase, type Database } from '../../server/database'
-import { account, session, user } from '../../server/database/schema/auth'
+import { account, session, user, verification } from '../../server/database/schema/auth'
 import { parseDatabaseConfig } from '../../server/database/config'
 
 // Explicitly allow only the disposable branch verified through Neon metadata.
@@ -9,10 +9,10 @@ import { parseDatabaseConfig } from '../../server/database/config'
 export function testDatabase() {
   const { databaseUrl } = parseDatabaseConfig({ databaseUrl: process.env.NUXT_DATABASE_URL })
   const url = new URL(databaseUrl)
-  if (process.env.NEON_BRANCH !== 'test-phase3'
+  if (process.env.NEON_BRANCH !== 'test'
     || url.hostname !== 'ep-rough-resonance-zadpdt75-pooler.c-2.eu-west-2.aws.neon.tech'
     || url.pathname !== '/nuxt_auth_starter_db') {
-    throw new Error('Supply the verified test-phase3 target explicitly; development/production targets are forbidden')
+    throw new Error('Supply the verified test target explicitly; development/production targets are forbidden')
   }
   return { databaseUrl, db: createDatabase(databaseUrl) }
 }
@@ -21,14 +21,15 @@ export function authFixtures(db: Database) {
   const emails: string[] = []
   return {
     credentials() {
-      const email = `phase3-${randomUUID()}@example.test`
+      const email = `auth-test-${randomUUID()}@example.test`
       emails.push(email)
-      return { name: 'Phase 3 integration', email, password: randomUUID() }
+      return { name: 'Auth integration test', email, password: randomUUID() }
     },
     async cleanup() {
       if (!emails.length) return
       const rows = await db.select({ id: user.id }).from(user).where(inArray(user.email, emails))
       for (const row of rows) {
+        await db.delete(verification).where(eq(verification.value, row.id))
         await db.delete(session).where(eq(session.userId, row.id))
         await db.delete(account).where(eq(account.userId, row.id))
         await db.delete(user).where(eq(user.id, row.id))

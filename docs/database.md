@@ -10,9 +10,9 @@ Neon is the default/reference implementation. Its HTTP driver, CLI, branches and
 
 `server/database/index.ts` is the public client boundary. It exports `createDatabase(databaseUrl: string)` and `Database = ReturnType<typeof createDatabase>`. Runtime auth, auth tooling and test helpers import through this entry point rather than directly from the provider. The type follows the selected implementation and preserves Drizzle's inference; it is not a generic driver interface.
 
-`server/database/providers/neon.ts` implements the reference factory. It constructs `drizzle({ client: neon(databaseUrl), relations })` using `@neondatabase/serverless` 1.1.0 and Drizzle ORM 1.0.0-rc.4. Constructing it does not execute a query; there is no persistent pool, global client, public database probe or startup query.
+`server/database/providers/neon.ts` implements the reference factory. It constructs `drizzle({ client: neon(databaseUrl), relations })` using `@neondatabase/serverless` 1.2.0 and Drizzle ORM 1.0.0-rc.4. Constructing it does not execute a query; there is no persistent pool, global client, public database probe or startup query.
 
-Server consumers obtain `useRuntimeConfig(event)`, validate it with `parseDatabaseConfig` from `server/database/config.ts`, and pass `databaseUrl` to the factory. Validation requires a PostgreSQL protocol and hostname. Keep imports under `server/`; callers must handle driver errors without returning connection objects or credentials to clients.
+Server consumers obtain `useRuntimeConfig()` from `nuxt/server`, validate it with `parseDatabaseConfig` from `server/database/config.ts`, and pass `databaseUrl` to the factory. Validation requires a PostgreSQL protocol and hostname. Keep imports under `server/`; callers must handle driver errors without returning connection objects or credentials to clients.
 
 `server/database/schema/index.ts` owns the provider-independent `authTables` mapping and composed relations: full `defineRelations(authTables)` entries followed by generated `authRelations`. This keeps regeneration separate from application composition. The auth adapter imports the table mapping directly. See [ADR 002](decisions/002-neon-http.md) for the HTTP transport constraint.
 
@@ -26,14 +26,14 @@ Nuxt and Kit use `.env` by default. Explicit Neon pulls target that file and pre
 
 The generated schema contains `user`, `session`, `account` and `verification`: 34 columns, four primary keys, unique user email and session token constraints, three lookup indexes, and two user foreign keys with cascade deletion. Generated token/password fields, timestamps and model names are preserved. Better Auth supplies session/account update timestamps; they intentionally have no SQL default. There are no domain/plugin tables.
 
-`server/auth/cli.ts` loads dotenv, uses the domain parsers and calls the same auth factory outside Nuxt. Client construction does not connect to the database. Run the pinned CLI and format its generated TypeScript:
+`server/auth/cli.ts` loads dotenv, uses the domain parsers and calls the same auth factory outside Nuxt. Client construction does not connect to the database. Run the locally installed CLI and format its generated TypeScript:
 
 ```sh
 pnpm auth:generate --yes
 pnpm exec eslint server/database/schema/auth.ts --fix
 ```
 
-The script pins `auth@1.7.3` and writes `server/database/schema/auth.ts`. Runtime and CLI both consume the generated mapping. For credential-free schema generation, use a fresh PowerShell session with placeholder connection settings:
+The script uses the `auth` development dependency resolved by `pnpm-lock.yaml` and writes `server/database/schema/auth.ts`. Runtime and CLI both consume the generated mapping. For credential-free schema generation, use a fresh PowerShell session with placeholder connection settings:
 
 ```powershell
 $env:NUXT_DATABASE_URL = 'postgresql://schema:schema@localhost/schema'

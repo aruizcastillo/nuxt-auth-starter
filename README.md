@@ -6,9 +6,9 @@ A reusable Nuxt 4 starter with a public application shell and server-side authen
 
 Neon is the default PostgreSQL provider, but the database layer is structured so another PostgreSQL client can be used without changing the schema, migrations or authentication model.
 
-The current implementation includes the Better Auth server endpoint, auth schema and initial migration.
+The current implementation includes the Better Auth server endpoint, auth schema, initial migration, and email verification and password recovery, using Resend as the reference email provider.
 
-Sign-in and account pages, email verification, password recovery, Google OAuth, protected application pages and the final authentication policy are still being implemented. Those remain planned work in the [roadmap](docs/roadmap/roadmap.md).
+Sign-in and account pages, verification/recovery screens, Google OAuth, protected application pages and the final authentication policy remain planned work in the [roadmap](docs/roadmap/roadmap.md).
 
 The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n. English and Spanish are currently configured.
 
@@ -56,7 +56,7 @@ npm install --global pnpm@12.3.4
    cp .env.example .env
    ```
 
-4. Configure PostgreSQL and Better Auth as described in [Environment configuration](#environment-configuration) and [Database setup](#database-setup).
+4. Configure PostgreSQL, Better Auth and email delivery (Resend by default) as described in [Environment configuration](#environment-configuration) and [Database setup](#database-setup).
 
 5. Apply the migrations:
 
@@ -86,19 +86,28 @@ The current database and auth setup uses:
 | `NEON_BRANCH` | Selected Neon branch used by Neon/test tooling. |
 | `NUXT_BETTER_AUTH_SECRET` | Better Auth secret. Use a random value of at least 32 characters. |
 | `NUXT_BETTER_AUTH_URL` | Application origin used by Better Auth. Use `http://localhost:3000` locally. |
+| `NUXT_RESEND_API_KEY` | Sending key for the reference Resend transport. |
+| `NUXT_EMAIL_FROM` | Email sender authorized by the chosen provider, as `sender@example.com` or `App <sender@example.com>`. |
 
 Generate a Better Auth secret with:
 
 ```sh
-node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+pnpm auth:secret
 ```
 
-The following integrations are planned but not connected yet:
+The CLI generates a `BETTER_AUTH_SECRET` entry. Copy its value into `NUXT_BETTER_AUTH_SECRET` in your `.env` file.
+
+For the included Resend transport, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required for registration, verification resend and recovery requests. Login, sessions, logout and consumption of existing links do not require email availability. Auth schema tooling does not require email settings.
+
+Resend is the reference email provider. Other providers can be integrated by replacing the email transport and its configuration without changing Better Auth or background execution. See the [email transport boundary](docs/authentication.md#isolated-email-transport) for replacement details.
+
+Background delivery supports local Nitro development, persistent Node servers and Vercel's Node runtime. Other serverless targets require a verified integration; see [deployment](docs/deployment.md#background-tasks).
+
+Google is planned but not connected yet:
 
 | Variables | Purpose |
 | --- | --- |
 | `NUXT_GOOGLE_CLIENT_ID`, `NUXT_GOOGLE_CLIENT_SECRET` | Google OAuth credentials. |
-| `NUXT_RESEND_API_KEY`, `NUXT_EMAIL_FROM` | Resend credentials and sender for verification and password recovery emails. |
 
 See [authentication](docs/authentication.md) for configuration details and [deployment](docs/deployment.md) for environment isolation.
 
@@ -159,29 +168,9 @@ The current Neon implementation uses the HTTP driver for stateless, serverless-f
 
 ## Authentication setup
 
-Set:
+Better Auth is exposed at `/api/auth` and stores users, sessions, accounts and verification records in PostgreSQL. Follow the environment and database setup above.
 
-```text
-NUXT_BETTER_AUTH_SECRET
-NUXT_BETTER_AUTH_URL
-NUXT_DATABASE_URL
-```
-
-and configure the migration database connection before running:
-
-```sh
-pnpm db:migrate
-```
-
-Better Auth is exposed at:
-
-```text
-/api/auth
-```
-
-and stores users, sessions, accounts and verification records in PostgreSQL.
-
-See [authentication](docs/authentication.md) for the currently implemented behavior and [Phase 4](docs/roadmap/roadmap.md#phase-4) for verification, recovery, email delivery and the remaining authentication work.
+See [authentication](docs/authentication.md) for implemented credential and verification/recovery delivery behavior, [Phase 4](docs/roadmap/roadmap.md#phase-4) for pending access/session policies and Google, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real-provider/deployment acceptance.
 
 ## Development commands
 
@@ -191,8 +180,8 @@ See [authentication](docs/authentication.md) for the currently implemented behav
 | `pnpm lint` | Run ESLint. |
 | `pnpm typecheck` | Run Nuxt/Vue TypeScript checks. |
 | `pnpm test` | Run Vitest in watch mode. |
-| `pnpm test:run` | Run the complete test suite once. |
-| `pnpm exec vitest run --project unit` | Run database-independent unit tests. |
+| `pnpm test:run --project unit` | Run database-independent unit tests for quick feedback. |
+| `pnpm test:run` | Run the complete suite, including the HTTP tests' internal build. |
 | `pnpm build` | Create a production build. |
 | `pnpm preview` | Preview the production build locally. |
 | `pnpm db:generate` | Generate migrations from schema changes. |
@@ -200,16 +189,7 @@ See [authentication](docs/authentication.md) for the currently implemented behav
 | `pnpm db:push` | Push schema changes directly for development use. |
 | `pnpm db:studio` | Open Drizzle Studio. |
 
-Standard local validation:
-
-```sh
-pnpm lint
-pnpm typecheck
-pnpm exec vitest run --project unit
-pnpm build
-```
-
-`pnpm test:run` includes live database auth tests that create and remove test accounts. Configure a disposable test target before running it; see [testing](docs/testing.md#test-target-and-commands).
+Choose checks using [validation scope](docs/testing.md#validation-scope). The full suite requires an isolated [test database](docs/testing.md#test-target-and-commands).
 
 ## Deployment
 
@@ -229,6 +209,12 @@ The reference deployment target is Vercel with Neon PostgreSQL.
 
 See [deployment](docs/deployment.md) for the current environment requirements. The complete production deployment workflow is covered by [Phase 9](docs/roadmap/roadmap.md#phase-9).
 
+### Build performance on Windows
+
+Production builds on Windows are affected by a [known Nitro 2 performance issue](https://github.com/nuxt/nuxt/issues/34753) involving dependency resolution and file tracing.
+
+The project retains Nuxt 4 / Nitro 2 and Nitro's default dependency tracing. See [planned maintenance](docs/roadmap/roadmap.md#planned-maintenance) for the future migration to Nuxt 5 / Nitro 3 and its compatibility conditions.
+
 ## Documentation
 
 - [Authentication](docs/authentication.md) — authentication behavior and configuration.
@@ -241,3 +227,4 @@ See [deployment](docs/deployment.md) for the current environment requirements. T
   - [Neon HTTP](docs/decisions/002-neon-http.md)
   - [Cookie cache](docs/decisions/003-cookie-cache-disabled.md)
   - [Versioned migrations](docs/decisions/004-versioned-migrations.md)
+  - [Background execution](docs/decisions/005-background-tasks.md)

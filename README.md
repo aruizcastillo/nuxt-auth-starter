@@ -168,29 +168,9 @@ The current Neon implementation uses the HTTP driver for stateless, serverless-f
 
 ## Authentication setup
 
-Set:
+Better Auth is exposed at `/api/auth` and stores users, sessions, accounts and verification records in PostgreSQL. Follow the environment and database setup above.
 
-```text
-NUXT_BETTER_AUTH_SECRET
-NUXT_BETTER_AUTH_URL
-NUXT_DATABASE_URL
-```
-
-and configure the migration database connection before running:
-
-```sh
-pnpm db:migrate
-```
-
-Better Auth is exposed at:
-
-```text
-/api/auth
-```
-
-and stores users, sessions, accounts and verification records in PostgreSQL.
-
-See [authentication](docs/authentication.md) for the currently implemented behavior and [Phase 4](docs/roadmap/roadmap.md#phase-4) for verification, recovery, email delivery and the remaining authentication work.
+See [authentication](docs/authentication.md) for implemented credential and verification/recovery delivery behavior, [Phase 4](docs/roadmap/roadmap.md#phase-4) for pending access/session policies and Google, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real-provider/deployment acceptance.
 
 ## Development commands
 
@@ -209,11 +189,7 @@ See [authentication](docs/authentication.md) for the currently implemented behav
 | `pnpm db:push` | Push schema changes directly for development use. |
 | `pnpm db:studio` | Open Drizzle Studio. |
 
-For routine validation, run `pnpm lint`, `pnpm typecheck`, and `pnpm test:run --project unit`.
-
-Run `pnpm test:run` when full integration coverage is needed. It includes an internal production build and requires an isolated [test database](docs/testing.md#test-target-and-commands).
-
-Run `pnpm build` separately when production compilation needs validation.
+Choose checks using [validation scope](docs/testing.md#validation-scope). The full suite requires an isolated [test database](docs/testing.md#test-target-and-commands).
 
 ## Deployment
 
@@ -237,7 +213,7 @@ See [deployment](docs/deployment.md) for the current environment requirements. T
 
 Production builds on Windows are affected by a [known Nitro 2 performance issue](https://github.com/nuxt/nuxt/issues/34753) involving dependency resolution and file tracing.
 
-The Nuxt maintainers confirmed that this issue has been fixed in Nitro 3. **Migration to Nuxt 5 / Nitro 3 is planned once Nuxt 5 reaches a stable release.** Until then, the project retains Nitro's default configuration to preserve compatibility.
+The project retains Nuxt 4 / Nitro 2 and Nitro's default dependency tracing. See [planned maintenance](docs/roadmap/roadmap.md#planned-maintenance) for the future migration to Nuxt 5 / Nitro 3 and its compatibility conditions.
 
 ## Documentation
 

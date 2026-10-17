@@ -1,12 +1,16 @@
 # Roadmap
 
-This file describes future work only. Current behavior lives in [authentication](../authentication.md), [database](../database.md), [testing](../testing.md) and [deployment](../deployment.md); setup lives in [README](../../README.md). Architectural constraints live in [ADRs](../decisions/001-better-auth.md).
+This file describes remaining scope, dependencies and acceptance criteria. Current behavior lives in [authentication](../authentication.md), [database](../database.md), [testing](../testing.md) and [deployment](../deployment.md); setup lives in [README](../../README.md). Working instructions belong to [AGENTS.md](../../AGENTS.md).
 
-Respect [AGENTS.md](../../AGENTS.md) and the roadmap's [scope exclusions](#out-of-scope) throughout every phase.
+Phase numbers are retained for dependency references. Phases 1–3 and credential registration/sign-in/sign-out are represented by current documentation. Phase 4.1–4.2 are implemented; their real-provider/deployment acceptance remains pending in Phase 9.
 
-Phase numbers are retained for dependency references. Phases 1–3 and credential registration/sign-in/sign-out are represented by current documentation, not completed checklists. Recheck exact installed versions and official guidance before implementing each phase. Required and quality/hardening work both gate production.
+## Scope and acceptance
 
-Implement one architectural or security decision at a time, test it, and review its ownership boundary before advancing. Within Phase 4, proceed through email transport/callbacks, verified-email/reset policy, Google/linking, then the authorization/input contract.
+- **Requirements:** phase acceptance checkboxes are mandatory outcomes, including security and quality work. Planned maintenance is separate future work, not a production-release prerequisite.
+- **Agreed decisions:** preserve [Better Auth ownership/linking](../decisions/001-better-auth.md), [Neon HTTP and transaction constraints](../decisions/002-neon-http.md), [disabled cookie caching](../decisions/003-cookie-cache-disabled.md), [versioned migrations](../decisions/004-versioned-migrations.md), [hosting-specific background execution](../decisions/005-background-tasks.md) and the explicit route, helper and policy contracts below. Simplifying an implementation recipe does not reopen these decisions.
+- **Technical proposals:** choices explicitly marked for evaluation remain open decisions. The [scope exclusions](#out-of-scope) apply throughout.
+
+Validation follows [testing scope](../testing.md#validation-scope). Tests accompany implementation; Phase 7 completes coverage and CI. Phase 9 owns real Preview/provider/serverless acceptance, without blocking Phase 4.3 or local acceptance of Phases 4–8. All applicable Preview gates precede production promotion; production smoke checks gate release acceptance.
 
 <a id="phase-4"></a>
 
@@ -14,59 +18,47 @@ Implement one architectural or security decision at a time, test it, and review 
 
 ### Goal
 
-Complete the server's email/password, verified-email, recovery and Google policies. Add policy tests now; page access and the account endpoint follow in Phase 5.
+Complete verified-email access, password-reset session policy, Google authentication and the server authorization contract. Account data and page access follow in Phase 5.
 
 ### Preconditions
 
-- Phase 3's handler, shared auth factory, migration and live-server fixtures pass. Recheck Better Auth/adapter 1.7.9 and Zod 4.6.7 against installed source/types.
-- Obtain a Resend sending key, verified sender, controlled recipient mailbox and Google web OAuth credentials. Use [README configuration](../../README.md#environment-configuration). These external resources were not created during planning.
-- Read the official Better Auth setup, email/password and security skills, but verify their generic examples against 1.7.9. In particular, do not copy unpinned CLI commands, obsolete hooks or old rate-limit custom storage APIs.
+- The existing auth factory, mounted handler, migrations and isolated HTTP/email fixtures provide the baseline described in the topic documents.
+- Remaining sequence: verification/reset sessions → Google/linking → authorization/input contract.
 
 ### Boundary acceptance
 
-- [ ] Keep email/password directly configured in Better Auth, Google in its concrete provider module, and email callbacks using a simple sendEmail boundary. No registries or mirrored feature configuration.
-- [ ] Verify authenticated users/accounts, sessions and authorization with credentials+Google, credentials-only and Google-only. Credentials UI/flows may be removed manually. Removing Google must remove its settings requirements without changing core identity handling.
+- [ ] Preserve native Better Auth configuration, `server/auth/providers/google.ts`, the `sendEmail` boundary and provider-owned settings. Removing Google must remove its configuration requirements without changing core identity handling.
+- [ ] Verify the identity/session/authorization model with credentials + Google, credentials-only and Google-only configurations. Derived-project UI may be adapted manually; no provider registry or mirrored feature state is needed.
 
-### 2. Verify real email delivery and the deployed Vercel lifecycle.
+### 1. Email transport — implemented
 
-Current callbacks, transport and background providers are described in [authentication](../authentication.md#verification-and-recovery-delivery), [testing](../testing.md#email-transport-coverage) and [deployment](../deployment.md#background-tasks).
+The isolated Resend transport and its deterministic coverage are documented in [authentication](../authentication.md#isolated-email-transport) and [testing](../testing.md#email-transport-coverage). No transport implementation work remains here.
 
-- [ ] Complete the controlled preview/mailbox checks documented in deployment: real receipt, usable environment-correct links, completion after the response and sanitized provider-failure reporting. Fixtures cannot establish these external guarantees.
+### 2. Verification/recovery callbacks and background execution — implemented
 
-### 3. Define verified-email access and password-reset session behavior.
+Native callbacks, email availability preflight and hosting-specific background execution are documented in [authentication](../authentication.md#verification-and-recovery-delivery), [deployment](../deployment.md#background-tasks) and [ADR 005](../decisions/005-background-tasks.md). Real inbox receipt and deployed Resend/`waitUntil` behavior remain mandatory Phase 9 checks; implementation and fixtures do not establish those guarantees.
 
-- [ ] Extend the explicit email availability preflight and its tests whenever adding a new sending flow, including sign-in-triggered verification if enabled. See [current preparation behavior](../authentication.md#verification-and-recovery-delivery).
-- [ ] Set `emailAndPassword.requireEmailVerification: true` and choose `autoSignInAfterVerification: false` so verification leads to explicit sign-in. Preserve the existing registration email trigger. [Email verification guidance](https://better-auth.com/docs/concepts/email).
-- [ ] Add `server/utils/require-session.ts`: resolve identity using `auth.api.getSession({ headers: event.headers })`, return 401 for absent/expired identity and 403 with a stable safe code for an unverified identity. Return only the server-verified user needed by callers. The verified-email rule must apply to Google sessions too; the credential option alone does not enforce that.
-- [ ] Set `emailAndPassword.revokeSessionsOnPasswordReset: true`. Require sign-in with the new password after reset; retain disabled cookie caching so old sessions cannot survive in a cache.
-- [ ] Add integration cases for sign-in before/after verification, missing/tampered/expired verification and recovery tokens, repeated reset-token use, old-password rejection and revocation of two preexisting sessions. Test documented verification replay behavior rather than inventing a token contract.
-- [ ] Extend the existing captured-link fixture for these policy cases. Never set `emailVerified` directly merely to bypass verification in end-to-end tests.
+### 3. Require verified email and define password-reset session behavior.
 
-### 4. Configure Google OAuth credentials, callbacks and account-linking policy.
+- [ ] Require verified email for credential sign-in and protected server access, including access through Google sessions. Verification leads to explicit sign-in rather than automatic sign-in; preserve registration's verification email trigger.
+- [ ] Add `server/utils/require-session.ts`: derive identity from Better Auth's server-validated session, return 401 for absent/expired sessions and 403 with a stable safe code for unverified identity, and expose only the verified user needed by callers. Distinguish session lookup failure from a valid guest result.
+- [ ] Resetting a password revokes all prior sessions and requires sign-in with the new password. Preserve disabled cookie caching and database-authoritative revocation ([ADR 003](../decisions/003-cookie-cache-disabled.md)).
+- [ ] Any added email trigger, including sign-in-triggered verification if enabled, participates in the existing availability preflight before account-dependent branching. Whether to add that trigger is a proposal to evaluate, not a prerequisite for verification policy.
+- [ ] Prove pre/post-verification sign-in, missing/tampered/expired links, documented verification replay behavior, single-use reset, old-password rejection and revocation of multiple preexisting sessions. Extend captured-link fixtures and existing HTTP expectations; do not bypass verification by setting database flags.
 
-- [ ] Configure a Google OAuth web application with consent/test users as applicable. Register `http://localhost:3000/api/auth/callback/google` plus the exact controlled preview and production HTTPS callbacks. Store credentials in the private config pair and reject incomplete configuration when Google is enabled. [Google integration](https://better-auth.com/docs/authentication/google).
-- [ ] Compose `createGoogleProvider(config)` from `server/auth/providers/google.ts` into native `socialProviders`; the module requires both credentials. Use its documented default identity scopes; do not request offline access or unrelated Google API permissions for sign-in.
-- [ ] Preserve Better Auth's normal implicit linking for trustworthy OAuth identities with its verification/trust safeguards. Do not force explicit linking or add provider fields to users. [Account linking](https://better-auth.com/docs/concepts/users-accounts).
-- [ ] Preserve Better Auth's OAuth state/cookie validation and callback checks. Handle canceled consent, provider errors, absent/unverified email claims and a same-email collision without granting unintended account access.
-- [ ] Add tests for provider configuration and linking decisions using provider-boundary fixtures. Record a separate real Google sign-in/cancel/manual callback check; mocked OAuth alone cannot prove Google console configuration.
+### 4. Connect Google OAuth and preserve the agreed linking policy.
 
-### 5. Validate custom endpoint input and return appropriate authentication/authorization errors.
+- [ ] Compose the existing `createGoogleProvider(config)` into native Better Auth providers. Require both private credentials when enabled and only the normal identity scopes; no offline access or unrelated Google permissions.
+- [ ] Preserve normal implicit linking for trustworthy OAuth identities with Better Auth's verification/trust safeguards ([ADR 001](../decisions/001-better-auth.md)). Authentication methods remain accounts, not provider fields on users.
+- [ ] Preserve OAuth state/cookie/callback protection. Cancellation, provider errors, absent/unverified email claims and unsafe same-email collisions must not grant unintended access.
+- [ ] Cover configuration, accepted/rejected linking and failure paths at the provider boundary. Exact Google console callbacks use `/api/auth/callback/google`; real credentials, consent settings and sign-in/cancel checks belong to Phase 9.
 
-- [ ] Define the endpoint contract for Phase 5: `GET /api/account` accepts no user selector and returns a minimal current-user projection. Return 401 for no session, 403 for a verified-email policy failure, and 400 for malformed custom input. Use 404 for inaccessible resources only if a resource endpoint is actually introduced later.
-- [ ] Test `require-session.ts` in a Nuxt-aware/server fixture now, including a forged identity header and a null session. Do not introduce a speculative public endpoint solely to test the helper.
-- [ ] For any custom input introduced in this or subsequent phases, parse body/query with Zod 4 at the handler and explicitly allowlist writable properties. Never trust `userId`, `emailVerified`, roles or ownership supplied by a browser.
-- [ ] Leave Better Auth's built-in input validation and response format intact. Profile updates in Phase 6 use its `updateUser` API; add narrow supported server validation for name constraints, not an auth proxy.
-- [ ] Preserve auth-origin/CSRF defaults now; custom future mutations need their own verified protection. The planned account endpoint is read-only, so no separate mutation/CSRF framework is justified.
+### 5. Define custom endpoint authorization and input contracts.
 
-### Phase verification
-
-- [ ] Verify real email receipt, verification, recovery and Google sign-in with controlled development accounts; log only redacted outcomes.
-- [ ] Run the new tests for verification policy, token failure cases, session revocation, provider failures and accepted/rejected linking decisions. Update Phase 3 tests to obey verified-email sign-in.
-- [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:run` and `pnpm build`. Missing provider access remains an explicit incomplete manual check.
-
-### Expected state after completion
-
-Authentication methods and server identity policy work independently of UI. Emails have a reliable serverless lifecycle, reset revokes sessions, trustworthy OAuth identities link through Better Auth’s normal account model, and policy tests accompany the implementation.
+- [ ] Define Phase 5's read-only `GET /api/account`: current user only, no caller-supplied user selector, minimal user projection, 401 for absent identity, 403 for verification failure and 400 for invalid custom input. Do not introduce speculative resource CRUD or public test endpoints.
+- [ ] Verify `require-session.ts` with real server/session behavior, including null/unverified identity and forged identity headers.
+- [ ] Validate custom body/query input server-side with Zod and allowlist writable properties. Browser-supplied user IDs, verification flags, roles or ownership never establish authority.
+- [ ] Preserve Better Auth's native validation, response contracts and origin/CSRF protection. Phase 6 profile editing uses native `updateUser` with narrow supported server validation, not an auth proxy; any future custom mutation needs its own verified protection.
 
 <a id="phase-5"></a>
 
@@ -78,63 +70,46 @@ Connect Better Auth's authoritative session to Nuxt SSR and navigation, with ser
 
 ### Preconditions
 
-- Phase 4's server policies, real handler and tests pass. Relevant versions are Nuxt 4.6.1, Better Auth 1.7.9, Vue 3.5.44 and i18n 10.6.0.
-- Installed `better-auth/dist/client/vue/index.d.mts` confirms the Nuxt overload `useSession(useFetch)`. Its implementation uses a stable Nuxt fetch key and watches the Better Auth session signal. The returned SSR overload has `data`, `error` and a resolved `isPending: false`; do not assume it exposes every AsyncData method.
-- Keep `no_prefix` locale routing. The chosen route contract is `/sign-in`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` and `/account`; full screens belong to Phase 6.
+- Phase 4's server policies and integration checks pass.
+- Preserve `no_prefix` locale routing and the route contract: `/sign-in`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` and `/account`. Full screens belong to Phase 6.
 
-### 1. Protect a minimal account endpoint using server-verified identity and ownership.
+### 1. Protect the current-account endpoint.
 
-- [ ] Add `server/api/account.get.ts`; call Phase 4's `require-session.ts` before reading data. Derive the user exclusively from the verified session.
-- [ ] Return an explicit projection such as `{ user: { id, name, email, emailVerified } }`. Do not serialize the session record, cookie token, account rows, OAuth tokens, password hash, IP or user agent.
-- [ ] Accept no `userId` parameter. Reject unsupported selector query input with 400 using a small strict query schema; this makes the ownership contract unambiguous without adding user-by-ID CRUD.
-- [ ] Set `Cache-Control: private, no-store` on success and errors. Keep this route outside Nitro cached handlers and SWR/ISR rules.
-- [ ] Add live-server tests for anonymous 401, unverified 403, own-account success and attempts by user A to select user B. Prove B's data never appears and forged identity headers have no effect.
+- [ ] Add `server/api/account.get.ts` using `require-session.ts`. Derive the current user exclusively from the verified session and reject unsupported selector query input with 400.
+- [ ] Return only the intended `{ user: { id, name, email, emailVerified } }` projection. Exclude raw sessions, credentials, OAuth/account records, tokens, password hashes, IP addresses and user agents.
+- [ ] Apply `Cache-Control: private, no-store` on success and errors, outside cached handlers and shared SWR/ISR rules.
+- [ ] Prove anonymous 401, unverified 403, own-account success and rejection of cross-user selection/forged headers over real HTTP, independently of page middleware.
 
-### 2. Integrate the Better Auth client as the single session authority.
+### 2. Integrate the single authoritative auth client.
 
-- [ ] Create `app/lib/auth-client.ts` exporting `createAuthClient()` from `better-auth/vue` with the same-origin default endpoint. No database imports, server factory imports or public secret values are allowed.
-- [ ] Use this client directly for auth actions. Do not add a generic API wrapper, Pinia session store, parallel `useState` session, localStorage token or custom `/api/session` proxy.
-- [ ] Infer types from client results or type-only auth inference where supported. Ensure a type-only reference does not become a runtime import across the server boundary.
+- [ ] Add `app/lib/auth-client.ts` with the native Better Auth Vue client and same-origin endpoint. Use it directly for auth actions, with no runtime server imports or exposed secrets.
+- [ ] Keep Better Auth as the only session authority, with supported inferred types. Account-page data and mutation pending state do not become a second session store, custom session proxy or manually synchronized identity.
 
-### 3. Resolve sessions correctly during SSR, hydration and client navigation.
+### 3. Resolve sessions across SSR, hydration and navigation.
 
-- [ ] Use `await authClient.useSession(useFetch)` in setup and route middleware for session-dependent rendering. This is the documented 1.7.9 Nuxt integration; no manual cookie forwarding is needed. [Better Auth Nuxt integration](https://better-auth.com/docs/integrations/nuxt).
-- [ ] Fetch `/api/account` with relative `useFetch` from the account page so Nuxt carries the current request context and reuses hydration data. Keep its result as account-page data, not another authentication authority.
-- [ ] Preserve the library's cache key/session signal behavior. Do not use the client-only `useSession()` overload as the source of protected SSR HTML, or wrap protected content in `ClientOnly` to hide a mismatch.
-- [ ] Add concurrent user-A/user-B SSR requests and compare their rendered payloads to detect cross-request state leakage. Test authenticated refresh, guest refresh and navigation with revoked cookies.
-- [ ] Add Nuxt runtime tests under `test/nuxt/` for middleware and session consumers, plus live-server SSR cases under `test/e2e/`. Do not treat happy-dom assertions as a real browser hydration check.
+- [ ] Use the selected Better Auth/Nuxt SSR integration, `authClient.useSession(useFetch)`, preserving its session signal and hydration reuse.
+- [ ] Load `/api/account` through Nuxt's SSR-safe request/data primitives. Session-dependent HTML must respect the incoming request without manual cookie forwarding or client-only workarounds.
+- [ ] Verify authenticated/guest refresh, revoked sessions and concurrent independent users: no hydration mismatch, protected-content flash or cross-request payload leakage. Runtime/HTTP coverage accompanies implementation; real browser coverage is completed in Phase 7.
 
-### 4. Add authenticated-page and guest-page access rules.
+### 4. Apply authenticated-page and guest-page navigation rules.
 
-- [ ] Add named `app/middleware/auth.ts` and `app/middleware/guest.ts`; await session resolution, handle fetch errors separately from a valid null session, and always return `navigateTo` when redirecting.
-- [ ] Auth middleware sends guests to `/sign-in?redirect=...`, and unverified signed-in users to `/verify-email`. Guest middleware redirects a verified signed-in user from `/sign-in` or `/register` to the safe destination or `/account`.
-- [ ] Add minimal route shells only as needed to make this phase's navigation executable. Opt `/account` into auth middleware and sign-in/register into guest middleware via `definePageMeta`; Phase 6 replaces shell contents with forms.
-- [ ] Keep verification and reset landing routes reachable regardless of guest middleware. Otherwise an existing session could prevent completion of a recovery link. Do not apply a global redirect to `/api/auth` callbacks.
-- [ ] Assert missing-session, verified, unverified and upstream-error outcomes. A session service outage must present a retry/error state, not an endless sign-in redirect.
+- [ ] Add named `app/middleware/auth.ts` and `app/middleware/guest.ts`, with minimal route shells as needed. `/account` requires auth; sign-in/register use guest rules.
+- [ ] Send guests to sign-in with a safe return destination, unverified identities to verification, and verified users away from guest forms to the safe destination or `/account`.
+- [ ] Await session resolution and distinguish transient lookup errors from guests. Return redirects correctly; provide retryable error behavior without redirect loops.
+- [ ] Keep verification/reset landing routes reachable with an existing session and leave `/api/auth` callbacks outside page redirect rules. Middleware controls navigation UX; server authorization remains mandatory.
 
-### 5. Preserve safe return destinations without redirect loops.
+### 5. Preserve safe return destinations.
 
-- [ ] Add a pure `shared/utils/safe-redirect.ts` helper for the route contract. Accept a single local path, validate it with URL parsing against a fixed trusted origin, and return the normalized pathname/search/hash only for allowlisted application destinations (initially `/account` and `/`). Fall back to `/account`.
-- [ ] Reject arrays, protocol-relative URLs, schemes, backslashes, control characters and encoded attempts that normalize to an external destination. Reject auth form routes, `/api/` and unsupported paths to prevent loops.
-- [ ] Apply the same helper whenever consuming `redirect` for sign-in, registration and Google success callbacks. Preserve it through verification only when it can be carried safely; otherwise use `/account` consistently. Do not pass raw query values to `navigateTo` or OAuth callback parameters.
-- [ ] Add `test/unit/safe-redirect.test.ts` with local query/hash preservation, external URLs, `//host`, backslashes, encoded separators, duplicate query values and loop destinations. Keep it independent of Nuxt.
+- [ ] Add the pure `shared/utils/safe-redirect.ts` helper. Accept a single local destination, preserve its safe query/hash and allow only application destinations (initially `/account` and `/`), falling back to `/account`.
+- [ ] Reject ambiguous/multiple values, external or protocol-relative URLs, schemes, backslashes, control characters and encoded normalization attacks. Reject auth-form routes, `/api/` and unsupported paths that could create loops.
+- [ ] Apply this contract to sign-in, registration and Google return destinations. Carry it through verification only if safe; otherwise consistently use `/account`. Never navigate or start OAuth with a raw redirect query.
+- [ ] Cover accepted destinations and attack/loop cases in pure unit tests.
 
-### 6. Handle session loading, expiry and sign-out consistently.
+### 6. Handle session loading, expiry and sign-out.
 
-- [ ] Distinguish unresolved/error states from a resolved guest in navigation and page shells. Use the documented hook's actual return types; track mutation pending state locally in the component rather than duplicating identity.
-- [ ] After successful sign-out, let Better Auth invalidate its session signal, clear account-page data through Nuxt's data API and navigate to `/sign-in`. Do not clear identity optimistically on a failed sign-out request; show a retryable error.
-- [ ] On account API 401, clear only stale page data and resolve the authoritative session before returning to sign-in. On 403 show the verification path. Keep transient 5xx failures distinct.
-- [ ] Test sign-out from a second tab, session expiry while a page is open, browser back navigation and an expired cookie on hard refresh. Verify no old account content remains visible after revocation is observed.
-
-### Phase verification
-
-- [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:run` and `pnpm build` with both unit and server fixtures.
-- [ ] Manually inspect a production-preview browser: direct `/account` load, refresh, client navigation, sign-out/back, and concurrent sessions. Confirm no hydration warnings or protected-content flash.
-- [ ] Confirm account ownership is enforced over direct HTTP without relying on route middleware, and all untrusted redirect cases fall back safely.
-
-### Expected state after completion
-
-The account endpoint enforces identity and ownership. SSR, hydration and navigation use Better Auth's supported Nuxt session integration, with minimal route shells ready for the Phase 6 screens.
+- [ ] Distinguish pending/error states from resolved guests. On successful sign-out, use Better Auth's session invalidation, clear stale account-page data through Nuxt and navigate to sign-in; preserve identity and offer retry on failure.
+- [ ] Account 401 re-resolves authoritative identity and removes stale data, 403 offers verification, and transient server failures remain distinct.
+- [ ] Verify expiry/revocation, sign-out from another tab, hard refresh and browser back behavior. Once revocation is observed, old account content must not remain visible.
 
 <a id="phase-6"></a>
 
@@ -142,74 +117,56 @@ The account endpoint enforces identity and ownership. SSR, hydration and navigat
 
 ### Goal
 
-Deliver usable, localized and accessible authentication/account screens on the server and session foundations, with tests for each form's meaningful behavior.
+Deliver localized, accessible authentication/account screens with meaningful behavioral coverage.
 
 ### Preconditions
 
-- Phases 3–5 pass, including email, recovery, Google, account ownership and route-shell behavior. Preserve the Phase 5 URL contract and middleware.
-- Relevant resolved versions: vee-validate 5.0.0-beta.1, Zod 4.6.7, Vue 3.5.44, Reka UI 2.11.0, shadcn-nuxt 2.8.2, Tailwind 4.3.3 and i18n 10.6.0. Read the Vue, shadcn-vue, Reka and i18n skills before their implementation work.
-- Reuse existing `UiInput`, field/label/error components, button, card, spinner, skeleton and `UiPageContainer`. `app/app.vue` already mounts a toaster and sets reactive HTML language. `components.json` owns `app/components/ui/` and `app/lib/utils.ts`.
+- Phases 4–5 server/session/navigation contracts pass locally. Preserve their routes, middleware and safe-return helper.
+- Screens use the existing shadcn-vue/Reka components, page container, toaster, vee-validate + Zod and i18n configuration.
 
-### 1. Build registration, sign-in and Google sign-in screens.
+### 1. Build registration, credential sign-in and Google sign-in.
 
-- [ ] Implement `app/pages/register.vue` with name/email/password and `app/pages/sign-in.vue` with email/password. Use native forms, correct input types/autocomplete, submit buttons and the named guest middleware.
-- [ ] Submit through `authClient.signUp.email` and `authClient.signIn.email`. Include only validated fields and Phase 5's safe callback destination. On registration, show a generic check-email outcome consistent with the server's duplicate-account behavior.
-- [ ] Add a Google button using `authClient.signIn.social({ provider: 'google', ... })`, with safe success and error destinations. Give it `type="button"` inside forms and prevent duplicate actions while pending.
-- [ ] Link sign-in, registration, forgotten password and the public home using Nuxt links. Do not nest links inside actual button elements; use the existing `as-child` composition where appropriate.
-- [ ] Add component tests for valid submission, rejected fields, safe redirects, disabled pending actions and provider-start failure, using client-boundary mocks rather than mocking the forms themselves.
+- [ ] Add `app/pages/register.vue` (name/email/password) and `app/pages/sign-in.vue` (email/password), using native Better Auth actions and the safe return contract.
+- [ ] Registration presents a generic check-email outcome consistent with the final server policy. Google sign-in handles safe success/error destinations, cancellation and provider-start failure.
+- [ ] Provide working links between auth screens and home, semantic forms, appropriate autocomplete and no nested interactive elements or duplicate pending actions.
 
-### 2. Add email-verification, resend, forgotten-password and reset-password screens.
+### 2. Build verification, resend and password recovery screens.
 
-- [ ] Implement `app/pages/verify-email.vue` as the check-email/resend/result screen. Let the Better Auth verification endpoint consume its token and return to this page; avoid reimplementing verification in a custom Nitro route.
-- [ ] Use `authClient.sendVerificationEmail` for explicit resend with a validated email and safe callback URL. Display a generic acknowledgement and a retry state; do not reveal whether an address is registered or already verified.
-- [ ] Implement `app/pages/forgot-password.vue` with `authClient.requestPasswordReset`, using the absolute reset destination built from the configured same-origin flow. Keep known/unknown address outcomes indistinguishable.
-- [ ] Implement `app/pages/reset-password.vue`: validate the token/query shape, show a new-password/confirmation form, and call `authClient.resetPassword`. Handle missing, invalid, expired and used tokens with a link to request another email. Never persist tokens in localStorage or log them.
-- [ ] On reset success, remove the sensitive token query via replacement navigation and send the user to sign-in. Keep verification/reset screens available even when a session exists, as specified in Phase 5.
-- [ ] Test resend, recovery acceptance, invalid links and successful reset through component tests; extend live-server tests to follow the URLs captured by the email fixture.
+- [ ] Add `app/pages/verify-email.vue`, `app/pages/forgot-password.vue` and `app/pages/reset-password.vue` using native verification/recovery flows. Better Auth owns token consumption; no custom verification endpoint is needed.
+- [ ] Resend/recovery acknowledgements do not reveal whether an address exists or is already verified. Explain delivery uncertainty and offer usable retry paths without promising inbox receipt.
+- [ ] Validate link/query shape, handle missing/invalid/expired/used reset links and offer a fresh request. Reset success removes the sensitive token from the URL via replacement navigation and requires sign-in.
+- [ ] Keep these landing routes reachable with existing sessions. Never log or persist recovery/verification tokens in browser storage.
 
-### 3. Add a protected account page with basic profile editing and sign-out.
+### 3. Add the protected account screen, display-name editing and sign-out.
 
-- [ ] Replace the `/account` shell with SSR account data from `useFetch('/api/account')` and the auth middleware. Display the server-provided name, email and verification state.
-- [ ] Scope basic editing to the display name (for example trimmed 1–100 characters). Keep email read-only; email change, account deletion, uploads and linked-provider management remain out of scope.
-- [ ] Submit through `authClient.updateUser({ name })`, preserving Better Auth ownership checks. Enforce the same name rule server-side in a supported narrow Better Auth user-create/update hook in `server/auth/options.ts`; throw a documented safe API error for invalid names. Do not add a parallel profile mutation proxy.
-- [ ] After successful update, let the client signal refresh session consumers and refresh the account page's fetched data. Preserve unsaved text on failure; update displayed data only after confirmed success.
-- [ ] Wire sign-out to Phase 5's behavior and account/header navigation into `AppHeader.vue`. Add tests proving forged `userId`/`emailVerified` updates cannot change identity or another user's data through the built-in endpoint.
+- [ ] Complete `/account` with SSR current-user data, name/email/verification display and navigation from `AppHeader.vue`.
+- [ ] Editing is display-name only; email stays read-only. Preserve the native `updateUser` operation and enforce the chosen name rule server-side through a supported narrow Better Auth extension point, without a profile proxy.
+- [ ] Refresh displayed session/account data only after confirmed success; preserve unsaved input on failure. Forged user selectors or verification fields cannot change another user's data or authority.
+- [ ] Use Phase 5 sign-out behavior. Email changes, deletion, uploads and linked-provider management remain outside scope.
 
-### 4. Apply vee-validate + Zod to forms while retaining authoritative server validation.
+### 4. Validate forms with authoritative server checks.
 
-- [ ] Add small schemas in `shared/validation/auth.ts` and `shared/validation/profile.ts` only where safe rules are shared. Keep auth secrets, adapter configuration and database types out of them.
-- [ ] Pass Zod schemas directly to `useForm({ validationSchema, initialValues })`. vee-validate v5 supports Standard Schema; do not add `@vee-validate/zod` or `toTypedSchema`. Explicitly initialize fields and required UI attributes instead of relying on removed schema-default/required inference. [v5 migration](https://vee-validate.logaretm.com/v5/guide/migration/).
-- [ ] Bind fields through the installed v5 APIs to existing shadcn input/field components. Follow current field composition, while checking any online shadcn sample against the beta's types. [shadcn form composition](https://shadcn-vue.com/docs/forms/vee-validate).
-- [ ] Add password confirmation as a client-only cross-field rule; send only the new password and token to Better Auth. Keep sign-in passwords untransformed and keep length rules aligned with Phase 4.
-- [ ] Map stable Better Auth error codes and server validation errors to localized field/form messages. Treat unknown errors as a generic retryable failure; never render raw provider/server HTML or stack traces.
-- [ ] Add unit tests for actual boundary rules and component tests proving invalid input never invokes a mutation. Test direct server requests independently to prove bypassing the client cannot bypass validation.
+- [ ] Keep safely shared rules in `shared/validation/auth.ts` and `shared/validation/profile.ts` where useful. Client and server rules agree, including documented password bounds and the chosen display-name constraint; passwords remain untransformed.
+- [ ] Integrate vee-validate/Zod with the existing field components, without an overlapping validation adapter.
+- [ ] Password confirmation is client-only and is not sent to auth endpoints. Map safe validation/auth codes to localized field/form errors; unknown failures remain generic and retryable.
+- [ ] Prove meaningful boundary rules, prevention of invalid submissions and authoritative rejection when client validation is bypassed. A specific name-length limit remains to be confirmed during implementation; previous example values are not a new policy decision.
 
-### 5. Cover pending, success, invalid-input, expired-link and provider-failure states.
+### 5. Provide usable pending, success and failure states.
 
-- [ ] For each screen define and implement idle, submitting, success and error behavior; include network timeout, 429, invalid credentials, unverified identity, Google cancellation/collision and email-delivery uncertainty where relevant.
-- [ ] Block duplicate mutations and expose visible pending text/spinners. Keep operation-specific state local; ensure an error restores usable controls and does not strand focus on a disabled element.
-- [ ] Honor Better Auth's returned rate-limit retry header (1.7.9 documents `X-Retry-After`) for useful retry messaging. UI throttling is only feedback; the server remains authoritative.
-- [ ] Clear password fields after success/navigation, never place them in URLs, and preserve non-sensitive fields on recoverable errors. Avoid optimistic success when the API returned an error object.
-- [ ] Add behavioral tests for double submit, slow response, invalid/expired links, rate limit and provider failure. Do not replace these with static snapshots alone.
+- [ ] Cover invalid credentials, unverified identity, invalid/expired links, network/server failure, rate limits, Google cancellation/collision and email-delivery uncertainty where relevant.
+- [ ] Block duplicate mutations, show progress and restore usable controls/focus after errors. Respect supported retry metadata without treating UI throttling as security enforcement.
+- [ ] Clear passwords after success/navigation and keep them out of URLs; preserve non-sensitive input on recoverable failures. Never report success when the native action returned an error.
 
-### 6. Localize starter UI and verify keyboard access, labels and focus behavior.
+### 6. Localize and verify accessibility.
 
-- [ ] Add equivalent auth/account/navigation/error keys to `i18n/locales/en.json` and `es.json`. Preserve `strategy: 'no_prefix'`, the existing `i18n_redirected` cookie and root-only detection. [i18n routing](https://i18n.nuxtjs.org/docs/guide).
-- [ ] Use locale-aware schema messages or map safe validation codes at render time; ensure switching language updates visible errors without losing entered values. Do not store translated text in a global server singleton.
-- [ ] Associate every input ID with `UiFieldLabel`, descriptions and error IDs; use `aria-invalid` and `aria-describedby`. Keep errors available inline, with an appropriate live status for submit results; toasts alone are insufficient.
-- [ ] Focus the first invalid input using the existing `UiInput` `inputRef` support. Use Reka primitives for menus/focus behavior, preserve visible focus rings and avoid nested interactive controls.
-- [ ] Test keyboard-only tab order, Enter submission, dropdown Escape/focus return, browser autofill/password-manager behavior, narrow viewport and both languages. Verify SSR language and hydrated content agree.
+- [ ] Maintain equivalent English/Spanish auth, account, navigation and error messages. Preserve `no_prefix`, the `i18n_redirected` cookie and root-only browser-language detection.
+- [ ] Language changes update visible errors without losing form values; SSR language agrees with hydration and no translated state leaks between requests.
+- [ ] Provide associated labels/descriptions/errors, accessible submit status, visible focus and first-invalid-field focus. Inline errors remain usable without toasts; preserve primitive keyboard/focus behavior.
+- [ ] Verify keyboard submission/tab order, menu dismissal/focus return, autofill/password managers and narrow viewports in both languages; fix discovered usability/accessibility failures.
 
-### Phase verification
+### Cross-flow acceptance
 
-- [ ] Exercise registration → real email verification → sign-in → edit name → sign-out and recovery → new-password sign-in. Exercise Google sign-in/cancel/collision independently.
-- [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:run` and `pnpm build`; include the new unit, Nuxt component and live-server cases.
-- [ ] Inspect production-preview refresh/navigation in both languages with no hydration warnings, duplicate session authority or private data in page payloads beyond the allowed user projection.
-- [ ] Record manual keyboard/focus/mobile findings and fix failures before considering the phase done.
-
-### Expected state after completion
-
-All scoped authentication and account screens are usable and tested alongside implementation. Phase 7 strengthens cross-flow/browser coverage and makes the checks mandatory in CI.
+- [ ] Relevant form, runtime and HTTP checks cover registration → fixture verification → sign-in → profile edit → sign-out, recovery → new-password sign-in, and provider-boundary Google outcomes.
 
 <a id="phase-7"></a>
 
@@ -217,74 +174,39 @@ All scoped authentication and account screens are usable and tested alongside im
 
 ### Goal
 
-Complete the tests introduced during Phases 3–6 and make meaningful validation a required merge/deployment gate. This phase does not defer basic implementation testing until the end.
+Close remaining coverage gaps, add browser tests, automate migration reproducibility and make meaningful checks mandatory in CI.
 
 ### Preconditions
 
-- Phases 3–6 already contain config/schema/redirect unit tests, Nuxt component/middleware tests and live-server auth/account tests.
-- Recheck Vitest 4.1.11, Nuxt Test Utils 4.3.3, Vue Test Utils 2.5.1, happy-dom 20.14.6, TypeScript 6.0.3 and the Phase 1 Node/pnpm pair.
-- The current test projects are described in [testing](../testing.md). Nuxt Test Utils 4.3.3 exports `e2e` and `playwright`; Playwright is an optional peer, not an installed direct project dependency. Add a browser dependency only for this concrete browser-testing requirement.
+- Existing test projects, ignored `.env.test`, target guard, fixtures and real HTTP coverage are documented in [testing](../testing.md).
+- Phases 4–6 have implementation coverage; remaining gaps and browser tooling are pending here.
 
-### 1. Define test-specific environment configuration.
+### 1. Close unit, runtime and integration coverage gaps.
 
-- [ ] Document required test values in `docs/testing.md`; keep actual `.env.test` ignored. Use Phase 1's runtime variable names when starting Nuxt, with a unique test auth secret, localhost origin and isolated database URL.
-- [ ] Require an explicit test database identity/allowlist before fixture cleanup or migration replay. Refuse absent configuration and development/production targets. Create an empty ephemeral branch/database for CI, or a dedicated isolated test target with serialized jobs.
-- [ ] Select test email transport at the test factory/fixture boundary, never through a public production toggle or unauthenticated inbox endpoint. Keep OAuth mocks inside test fixtures; no real Google credentials are needed for ordinary deterministic CI.
-- [ ] Load test environment configuration before constructing the Nuxt server and auth instance. Avoid accidentally inheriting developer `.env` credentials; use unique per-run test data and clean it in `finally`/teardown.
+- [ ] Inventory actual coverage against Phases 4–6 and add missing cases, reusing existing projects and provider fixtures. Cover settings/validation/redirect boundaries, session errors, verification/reset policy, ownership, profile updates and Google linking/failure paths.
+- [ ] Exercise real handlers, migrated data and independent users/cookies where authority depends on them. Include concurrent SSR isolation, forged identity/selector input and protection against unintended cross-user updates.
+- [ ] Coverage uses the real authorization/session boundaries without production test bypasses or sensitive snapshots/artifacts. Provider fixtures remain distinct from Phase 9's real-provider acceptance.
 
-### 2. Cover pure validation and utilities with Vitest.
+### 2. Add real browser coverage.
 
-- [ ] Inventory `test/unit/` against Phase 1 settings parsing, Phase 5 safe redirects and Phase 6 validation. Add missing edge cases and meaningful expected outcomes, not tests that merely reproduce implementation expressions.
-- [ ] Cover empty/whitespace names, password bounds and confirmation, invalid email, query arrays, encoded redirect attacks and partial private settings. Assert sensitive values do not appear in settings errors.
-- [ ] Keep these tests in the existing Node environment with explicit imports. Do not boot Nuxt for pure schemas/helpers or introduce a new test framework.
+- [ ] Add compatible Playwright tooling with one supported Nuxt integration, the planned `test:browser` command and `test/browser/` cases. Happy-dom does not establish browser hydration or accessibility.
+- [ ] Run against a production-built server with isolated settings and reliable startup/teardown. Cover protected direct loads/refresh, sign-in/safe redirects, sign-out/back, cross-tab expiry/revocation and recovery links with an existing session.
+- [ ] Fail on hydration/page errors and private-data leakage across users or into guest HTML. Cover English/Spanish forms, labels, invalid-field focus and keyboard submission.
+- [ ] Keep browser traces and failure artifacts free of credentials/tokens and apply short retention.
 
-### 3. Cover server authorization and session behavior with Nuxt-aware tests.
+### 3. Automate empty-database migration and drift checks.
 
-- [ ] Keep `test/nuxt/` for runtime composables, middleware and components using `@nuxt/test-utils/runtime`. Keep `test/e2e/` for a real Nitro server via `@nuxt/test-utils/e2e` in a separate Node project. [Nuxt test environments](https://nuxt.com/docs/4.x/getting-started/testing).
-- [ ] Exercise real `/api/auth` and `/api/account` handlers with actual migrated test data for session creation, expiry, revocation, 401/403 and safe account projection. Do not substitute an always-authenticated mock for the security gate.
-- [ ] Cover session lookup errors separately from guests, two independent cookie jars, concurrent SSR requests, unverified identities and forged headers/selectors.
-- [ ] Keep time-sensitive unit behavior deterministic and integration lifetimes short/configured. Avoid arbitrary sleeps; wait on explicit state or controlled clock behavior where supported.
+- [ ] Apply committed migrations to an actually empty isolated target, verify required schema/history/constraints and confirm a second migrate is a no-op. Run auth integration coverage against the migrated result.
+- [ ] Automate the [documented drift procedure](../testing.md#migration-validation) in a disposable checkout, including auth-schema regeneration. Fail on unexpected schema/migration changes; never rewrite applied migrations or commit drift automatically.
+- [ ] Explicitly verify target identity before migration/cleanup. Provision per-run targets or serialize dedicated-target jobs; scope provisioning credentials to test infrastructure and dispose only of resources created for that run.
 
-### 4. Test authentication flows, recovery links and cross-user access rejection.
+### 4. Establish required CI and deployment gates.
 
-- [ ] Complete sign-up → captured verification email → verification endpoint → sign-in → account → profile update → sign-out through real HTTP. Assert identity and database effects, not merely status 200.
-- [ ] Complete recovery → captured reset URL → password replacement → old-password rejection → all-old-session rejection → fresh sign-in. Include missing/tampered/expired/reused tokens.
-- [ ] Create users A and B and prove A cannot select B's account or mutate B through `updateUser`; verify B's persisted name and verification state remain unchanged. Do not add a new user-by-ID endpoint just to create a cross-user test.
-- [ ] Test known/unknown email request responses, repeated resend and provider transport failure with deterministic transport fixtures. Keep tokens/cookies/passwords out of snapshots and CI artifacts.
-- [ ] Cover Google cancellation, state mismatch and linking policy with provider-boundary mocks, while maintaining a manual real-provider smoke checklist for Phase 9. CI must not claim that a mock verifies Google's callback registration.
-
-### 5. Verify protected-page refreshes, redirects and hydration in a browser.
-
-- [ ] Add a compatible pinned `@playwright/test` development dependency and Chromium installation for the browser job; verify the release against Nuxt Test Utils' optional peer range. Keep it separate from happy-dom tests. Use `@nuxt/test-utils/playwright` or the documented e2e browser integration, not both competing harnesses.
-- [ ] Add `playwright.config.ts`, a `test:browser` script and `test/browser/` cases. Start a production-built app with isolated test settings, wait for readiness, and close the process/fixtures after each run.
-- [ ] Test anonymous direct `/account`, successful sign-in redirect, authenticated hard refresh, safe return query, sign-out/back navigation, reset landing with an existing session and session expiry in another tab.
-- [ ] Capture browser console/page errors and fail on hydration mismatch. Assert protected account data is absent from guest HTML and no other user's payload leaks across sessions.
-- [ ] Cover one English and one Spanish form flow, field labels, invalid-field focus and keyboard submission. Store failure traces only with short retention and scrub/avoid credential-bearing URLs and bodies.
-
-### 6. Test migrations against an isolated empty database.
-
-- [ ] In a dedicated CI step, provision/choose an empty permitted test target and run `pnpm db:migrate` using committed migrations only. Confirm core tables and constraints, then run again and assert no new migration is applied.
-- [ ] Run auth integration tests against that migrated target. This proves the committed schema supports the current adapter instead of relying on a developer database updated by `push`.
-- [ ] Run `pnpm db:generate` in a disposable checkout after tests and fail on unexpected tracked/untracked migration changes. Do not commit generated drift from CI or modify the migration under test.
-- [ ] Dispose of only the per-run target after completion. Keep branch API credentials scoped to test infrastructure and never expose them to untrusted pull-request code.
-
-### 7. Require lint, typecheck, actual tests and production build in CI.
-
-- [ ] Create the repository-host CI workflow (for GitHub, `.github/workflows/ci.yml`) with the supported Node/pnpm versions and `pnpm install --frozen-lockfile`. Preserve the lockfile and package-manager trust/build settings.
-- [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:run` and `pnpm build`, plus `pnpm test:browser`. Configure jobs so migrations precede database tests and the production build precedes browser tests.
-- [ ] Fail on zero discovered tests, skipped required suites, migration drift and any command failure. Report missing test infrastructure as a failed required gate rather than a success with silent skips.
-- [ ] Configure required checks/branch protection and deployment gating. Separate secret-free lint/unit checks for untrusted contributions from trusted integration execution; do not use a privileged workflow to run unreviewed fork code with secrets.
-- [ ] Verify a deliberately broken auth assertion and a deliberate type error fail the expected checks, then remove those temporary failures. Record commands, test counts and manual-only checks in `docs/testing.md`.
-
-### Phase verification
-
-- [ ] A clean CI run discovers and passes actual unit, Nuxt, server and browser tests using migrations replayed from an empty target.
-- [ ] A failure in any required command blocks merge/deployment, and untrusted code receives no protected secrets.
-- [ ] Confirm no `passWithNoTests`, blanket skips, production test bypasses or leaked auth artifacts exist.
-
-### Expected state after completion
-
-The starter has reliable repeatable tests and mandatory CI checks. Real provider and deployment behavior remains explicitly covered by Phase 9's manual environment smoke tests.
+- [ ] Add repository-host CI using the supported Node/pnpm setup and frozen lockfile installation, preserving package-manager trust/build settings.
+- [ ] Require relevant lint, typecheck, actual unit/runtime/HTTP/browser tests and production compilation evidence. Order migrations before database tests and the appropriate build before browser tests; avoid redundant builds where artifacts/evidence can be reused.
+- [ ] Fail on missing required suites, zero tests, silent skips, drift and command failures. Prove representative test/type failures block the expected checks, then remove deliberate failures.
+- [ ] Configure required merge/deployment checks. Keep untrusted contribution checks secret-free and protected integration credentials inaccessible to unreviewed code.
+- [ ] `docs/testing.md` describes the final commands, infrastructure prerequisites and manual acceptance boundaries.
 
 <a id="phase-8"></a>
 
@@ -292,68 +214,49 @@ The starter has reliable repeatable tests and mandatory CI checks. Real provider
 
 ### Goal
 
-Validate production security controls and document practical operational recovery procedures before deployment.
+Close security gaps, select a justified serverless abuse-control strategy and prepare operational procedures. All security outcomes are mandatory; checks requiring the deployed delivery path are accepted in Phase 9.
 
 ### Preconditions
 
-- Phases 1–7 pass. Inspect final auth options, built responses and test fixtures rather than assuming defaults alone establish security.
-- Recheck Better Auth/adapter 1.7.9, Drizzle RC.4 and deployment behavior. The installed security skill has some generic legacy examples; current 1.7.9 docs/types take precedence where they differ (for example atomic rate-limit consumption).
-- Use test/preview targets and controlled accounts. No production credentials or external infrastructure changes were made while writing this plan.
+- Phases 4–7 provide the implemented flows and automated coverage under review. Real-host acceptance follows in Phase 9.
 
-### 1. Verify trusted origins, secure cookies, CSRF protection and safe redirects.
+### 1. Enforce origin, cookie, CSRF and redirect protections.
 
-- [ ] Review configured canonical origins for local, controlled preview and production. Restrict trusted origins to controlled hosts; do not reflect arbitrary `Host`/forwarded headers into the allowlist or trust all `*.vercel.app` projects.
-- [ ] Keep Better Auth origin/CSRF checks enabled. Exercise requests from allowed, foreign and missing origins plus relevant Fetch Metadata combinations, comparing results to documented behavior rather than disabling checks for tests. [Better Auth options](https://better-auth.com/docs/reference/options).
-- [ ] Inspect real HTTPS response cookies for Secure, HttpOnly, appropriate SameSite and path/domain scope. Keep host-scoped defaults; do not enable cross-subdomain cookies or weaken them for OAuth without a demonstrated need.
-- [ ] Re-run the safe-redirect attack corpus against both client consumption and Better Auth callback URLs. Confirm Google state/callback cookies survive the real flow and a modified state is rejected.
+- [ ] Restrict trusted origins to controlled canonical hosts, without reflecting arbitrary host/forwarded headers or trusting all Vercel projects.
+- [ ] Preserve Better Auth origin/CSRF checks and verify allowed/foreign/missing-origin and relevant Fetch Metadata behavior against supported rules. Keep appropriate Secure/HttpOnly/SameSite and host/path scope; no speculative cross-subdomain relaxation.
+- [ ] Cover redirect attacks and OAuth state/callback integrity. Phase 9 confirms cookies and callback behavior over real HTTPS.
 
-### 2. Verify that the selected authentication rate-limiting strategy is appropriate for Vercel's serverless deployment model.
+### 2. Evaluate and verify serverless authentication rate limiting.
 
-- [ ] Select Better Auth's built-in database storage on Neon (`rateLimit.storage: 'database'`) with rate limiting explicitly enabled in the tested production configuration. In-memory counters do not aggregate across Vercel instances; Redis and custom storage are unnecessary for this starter. [Rate limiting](https://better-auth.com/docs/concepts/rate-limit).
-- [ ] Regenerate the auth schema through the pinned Phase 3 CLI after this option changes. Review the added rate-limit table/unique key and produce a new versioned migration; do not rewrite the initial migration. This is auth infrastructure required by this checklist item, not a new domain feature.
-- [ ] Review default rules and set justified limits for sign-in, sign-up, resend and reset using exact mounted-library-relative rule paths from installed types/source. Do not copy a skill example's `/api/auth` prefix without checking its matcher.
-- [ ] Verify trusted proxy/IP handling on Vercel and prevent caller-controlled forwarded headers from selecting arbitrary limit identities. Test IPv4/IPv6 and shared-IP behavior with controlled traffic.
-- [ ] Test simultaneous requests through separate auth instances sharing the test database: counters aggregate, excess attempts produce 429 with retry metadata, windows expire, and database failure has understood behavior. Check the built-in adapter's atomic implementation; do not introduce the obsolete custom `get`/`set` limiter shape.
-- [ ] Measure reasonable request latency and table growth for the expected starter workload; document maintenance using supported database operations if needed. Do not add a queue, cron service or cache infrastructure speculatively. If concurrency enforcement fails, block deployment and investigate the supported adapter behavior.
+- [ ] Choose and document an effective strategy for sign-in, sign-up, resend and reset across multiple Vercel instances. Per-process counters alone do not meet this requirement.
+- [ ] **Decision to review:** evaluate Better Auth's supported storage and applicable hosting controls for concurrency correctness, failure behavior, latency, operating cost and maintenance. Database storage on Neon is a candidate, not a preselected requirement; additional infrastructure remains subject to the scope exclusions.
+- [ ] Verify actual rule matching, trustworthy proxy/IP identity, IPv4/IPv6 and shared-IP behavior. Caller-controlled forwarded headers must not enable bypass.
+- [ ] Prove concurrent attempts are counted correctly across independent instances, excessive requests receive 429/retry guidance, windows expire, and storage/control failures have understood behavior. Document expected growth/maintenance for the chosen approach.
+- [ ] If the choice changes auth schema, generate/review a new versioned migration through the existing workflow. A rate-limit table/migration is conditional on that choice, not a prerequisite by itself. Phase 9 verifies enforcement through deployed function requests; unresolved enforcement failures block production.
 
-### 3. Check account enumeration, OAuth linking and session-revocation behavior.
+### 3. Prevent enumeration, unsafe linking and stale-session access.
 
-- [ ] Compare existing/non-existing addresses for registration, sign-in, resend and recovery at the HTTP boundary, including status/body and gross timing differences. Confirm slow email delivery does not determine response timing. Do not promise mathematically identical network timing.
-- [ ] Verify trustworthy same-email OAuth identities link normally while unsafe linking is rejected, provider identity is not synthesized, and unverified sessions cannot access `/api/account`.
-- [ ] Confirm sign-out invalidates its session, reset invalidates all prior sessions, and expired cookies cannot read account data. Keep cookie caching off unless a later explicit requirement justifies and tests its revocation delay. [Session management](https://better-auth.com/docs/concepts/session-management).
-- [ ] Add regression cases for every discovered gap to the Phase 7 suite; do not treat a manual audit as a substitute for repeatable authorization tests.
+- [ ] Review known/unknown email outcomes for registration, sign-in, resend and recovery, including public status/body and gross timing differences. Provider delivery latency must not expose account existence; do not promise identical network timing.
+- [ ] Verify trustworthy implicit OAuth linking, rejection of unsafe collisions and denial of protected access to unverified identities.
+- [ ] Preserve authoritative sign-out, expiry and reset revocation with cookie caching disabled. Add regression coverage for discovered gaps rather than replacing repeatable checks with a manual audit.
 
-### 4. Ensure personalized responses cannot leak through shared caching.
+### 4. Prevent personalized data leakage through caching.
 
-- [ ] Audit `nuxt.config.ts` route rules, Nitro handlers and Vercel cache settings. Exclude `/api/auth/**`, `/api/account` and personalized pages from prerendering, ISR/SWR and shared response caches.
-- [ ] Set/test private no-store behavior for account, auth and personalized page responses, including redirects/errors and cookies. Remove any broader cache rule that overrides this intent; do not rely on `Vary: Cookie` alone.
-- [ ] Fetch the same URL in order as user A, guest and user B through preview's actual delivery path. Compare body/HTML/payload and cache headers; no prior identity may appear.
-- [ ] Keep static public asset caching intact. Browser history state must also clear after sign-out as tested in Phase 5.
+- [ ] Exclude auth routes, `/api/account` and personalized pages from prerendering and shared ISR/SWR/response caches. Enforce private no-store behavior on auth endpoints and personalized responses, including redirects and errors; `Vary: Cookie` alone is insufficient.
+- [ ] Preserve public static-asset caching and post-sign-out removal of stale account content. Phase 9 verifies sequential user A → guest → user B requests through the actual deployed cache path.
 
-### 5. Keep passwords, tokens and sensitive user data out of responses and logs.
+### 5. Protect secrets and sensitive data in responses, links and logs.
 
-- [ ] Audit auth/account serializers, `console` calls, exception reporters and provider failures. Keep logs to event category, safe error code, timestamp and correlation identifier; redact cookies, Authorization, database URLs and sensitive request/query bodies.
-- [ ] Keep the minimum intended current-user fields in session/account responses. Never serialize raw account/password/OAuth records; do not attempt to remove fields required by Better Auth's supported client contract without verification.
-- [ ] Check reset/verification URL handling, referrer policy and third-party page requests so credential-bearing links are not sent as referrers. Use `Referrer-Policy: no-referrer` for these screens and avoid unnecessary third-party resources there.
-- [ ] Inspect test traces, provider logs and deployed exception logs with disposable marker secrets; ensure reports and support instructions do not request raw tokens or passwords.
+- [ ] Keep intended minimal user projections and Better Auth's supported client contract; never serialize raw credential/account records. Redact cookies, authorization, database URLs, passwords, provider keys and token-bearing bodies/queries from errors and logs.
+- [ ] Use safe event/error identifiers for diagnostics. Keep credential-bearing verification/reset links out of referrers with `Referrer-Policy: no-referrer` on those screens and avoid unnecessary third-party requests there.
+- [ ] Review test artifacts and reporting paths as well as application output. Phase 9 confirms sanitized failures in deployed/provider logs with controlled data.
 
-### 6. Document secret rotation, database recovery and failed-deployment handling.
+### 6. Prepare the operational runbook.
 
-- [ ] Create the operations runbook in `docs/deployment.md` listing secret owners, storage location, rotation sequence and verification for auth secret, Neon password, Google secret and Resend key; record no secret values.
-- [ ] For auth-secret rotation, inspect 1.7.9's supported rotation options and document effects on sessions, verification links and any encrypted stored OAuth data. Do not assume changing one string preserves all encrypted material; require reauthentication/relinking where necessary.
-- [ ] Document Neon's restore-to-new-branch/cutover procedure, checks of schema, migration history and user/session consistency, and the responsible operational role. Explain how to determine configured retention and available recovery capabilities; confirm and record production-specific values in Phase 9. [Neon recovery](https://neon.com/docs/introduction/branch-restore).
-- [ ] Describe failed migration/deployment handling: stop rollout, identify the last compatible application/schema pair, preserve migration history, prefer forward correction, and roll back application code only when schema-compatible. Never run destructive reverse SQL automatically.
-- [ ] Include email-provider outage handling, investigation using safe event IDs, user resend/recovery guidance and credential compromise response. Keep this a short runbook, not a new monitoring platform.
-
-### Phase verification
-
-- [ ] All origin/cookie/redirect, shared rate-limit, revocation and cache-isolation checks pass on isolated targets.
-- [ ] Replay the additional rate-limit migration and run `pnpm lint`, `pnpm typecheck`, `pnpm test:run`, `pnpm build` and browser tests.
-- [ ] Review the runbook with the deployment owner and confirm no unresolved security failure is waved through to production.
-
-### Expected state after completion
-
-The starter has verified production safeguards, shared database-backed auth throttling and a concrete operational runbook. It is ready for the controlled preview/production rollout in Phase 9.
+- [ ] Document ownership, safe storage, rotation and verification for auth, database, Google and email secrets in `docs/deployment.md`, without secret values. Verify supported auth-secret rotation and effects on sessions, links and encrypted OAuth data; require reauthentication/relinking where necessary.
+- [ ] Describe database restore-to-new-target/cutover, schema/history/user/session checks and responsible roles. Phase 9 records actual provider retention/recovery capabilities; a full recovery rehearsal remains out of scope.
+- [ ] Define failed migration/deployment handling: stop rollout, identify the compatible application/schema pair, preserve history, prefer forward correction and roll back code only when schema-compatible. No automatic destructive reverse SQL.
+- [ ] Include email outages, safe diagnostic IDs, resend/recovery guidance and credential compromise response, using existing operational facilities; the deployment owner reviews the runbook.
 
 <a id="phase-9"></a>
 
@@ -361,69 +264,53 @@ The starter has verified production safeguards, shared database-backed auth thro
 
 ### Goal
 
-Deploy the validated starter through an isolated preview to production, with controlled migration sequencing and real provider verification.
+Own real-infrastructure acceptance: isolated Preview, external providers, release sequencing, serverless behavior and production smoke checks.
 
-### Preconditions
+### Preconditions and gates
 
-- Phases 1–8 pass, including required CI/browser checks, the rate-limit migration and operational runbook. Production is blocked by unresolved auth, isolation or migration failures.
-- Obtain Vercel/Neon project access, domain/DNS control, Google console access, verified Resend sender and controlled test accounts. Confirm the intended production release and infrastructure targets before applying changes during implementation.
-- Use Node 24 with the Nuxt-required minimum and the pinned pnpm version from Phase 1. Recheck platform support at deployment time. [Vercel Node versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).
+- A controlled Preview may be prepared earlier as its features/controls become available; it does not require Phase 8's deployed acceptance to have passed already.
+- Final Preview acceptance requires Phases 4–8 implementation, automated gates and runbook preparation. Production promotion requires all applicable Preview/provider/security checks below, including previously deferred email lifecycle acceptance.
+- Obtain controlled Vercel/Neon targets, domain/DNS access, Google OAuth settings, authorized Resend sender and test mailboxes/accounts. Verify current platform support for the repository's runtime/tooling at deployment time.
 
-### 1. Configure Vercel environments with appropriately isolated Neon databases.
+### 1. Configure isolated environments.
 
-- [ ] Import the repository as a Nuxt project using Vercel's supported framework detection and server deployment. Use `pnpm build`, not `pnpm generate`; this starter requires server auth routes. Do not copy generic static-output settings into the project. [Nuxt on Vercel](https://vercel.com/docs/frameworks/full-stack/nuxt).
-- [ ] Configure Development, Preview and Production values using the [README environment variables](../../README.md#environment-configuration). Verify both build and function runtime receive the intended values without printing them.
-- [ ] Assign isolated Neon targets to each environment; previews must not use production user data. For concurrent previews, use separate branches or a deliberately serialized controlled preview target.
-- [ ] Set runtime and migration credentials with only their required permissions. Pass the direct elevated URL to the migration job under `DATABASE_URL_UNPOOLED`; do not deploy it as the normal function credential.
-- [ ] Match Vercel compute and Neon regions where practical. Verify frozen installation and the preserved pnpm build allowances on Vercel.
+- [ ] Use Vercel's supported Nuxt server deployment and production build, not static generation. Confirm build/runtime settings and frozen installation match the repository.
+- [ ] Configure private values from the [README contract](../../README.md#environment-configuration), scoped separately to Development, Preview and Production. Verify correct build/function values without printing secrets.
+- [ ] Isolate databases, auth secrets and provider credentials/settings as appropriate. Previews never use production user data; concurrent previews need separate targets or deliberate serialization.
+- [ ] Use least-privilege runtime credentials and separate direct migration credentials. Keep elevated migration access out of ordinary functions and align compute/database regions where practical.
 
-### 2. Configure production URLs, Google callbacks and a verified email sender.
+### 2. Configure real domains, Google callbacks and email delivery.
 
-- [ ] Configure the controlled preview hostname and production domain with working TLS. Set each canonical auth URL explicitly; neither arbitrary request hosts nor unreviewed preview hostnames should define security policy.
-- [ ] Register exact `/api/auth/callback/google` URLs in the corresponding Google application and verify consent publishing/test-user settings appropriate to each environment. Configure safe application return destinations independently of Google's provider callback.
-- [ ] Complete Resend sender-domain verification using its required DNS records. Send a controlled message from the configured sender and inspect verification/reset links for the correct target environment.
-- [ ] Ensure preview deployment protection allows the authorized test browser to complete Google/email redirects without weakening app origin checks. Keep real credentials and callback URLs out of reusable example files.
+- [ ] Establish controlled Preview/production HTTPS origins and exact `/api/auth/callback/google` registrations, with appropriate consent/test-user settings. Keep provider callbacks distinct from safe application return destinations.
+- [ ] Verify the Resend sender/domain and controlled recipient access. Real verification/recovery links must target the correct environment and remain usable through authorized Preview deployment protection without weakening app checks.
 
-### 3. Establish a controlled migration step before deploying dependent application changes.
+### 3. Gate dependent releases on reviewed migrations.
 
-- [ ] Add a trusted release job or documented operator step that selects the target, checks migration review/CI results and runs `pnpm db:migrate` once before releasing dependent code. Serialize migration jobs per database.
-- [ ] Apply committed artifacts only; no `db:push`, schema generation or migrations in Vercel build/request/cold-start hooks. Preview branch creation and migration must finish before preview traffic depends on the new schema.
-- [ ] Prevent an automatic production deployment from racing ahead of the migration step: configure a gated promotion/deploy workflow and test the ordering on preview.
-- [ ] Check compatibility with the currently running application before changing a shared schema. Use additive changes first; on a failed migration, stop deployment and follow the operations runbook in `docs/deployment.md` rather than blindly retrying or deleting migration history.
-- [ ] Record release commit, migration identifiers and target branch in deployment notes without secrets. Verify no pending migration remains for the deployed commit.
+- [ ] Establish a trusted serialized release job or operator procedure that verifies target/review/CI evidence and applies committed migrations before dependent code receives traffic.
+- [ ] No schema generation, `push` or migrations during build, requests or cold starts. Preview target creation/migration precedes dependent Preview traffic; production deployment cannot race ahead of its migration gate.
+- [ ] Check compatibility with the running application, prefer additive changes and stop rollout on migration failure. Follow the runbook; do not blindly retry or rewrite history.
+- [ ] Record release/migration/target identifiers without secrets and confirm no pending migration for the deployed commit.
 
-### 4. Deploy a preview and exercise complete authentication and account flows.
+### 4. Accept the controlled Preview and real providers.
 
-- [ ] Deploy the tested commit to the isolated controlled preview, verify correct server routes/runtime and run the browser smoke suite against that URL with controlled accounts.
-- [ ] Manually complete registration → real verification email → sign-in → account refresh → profile edit → sign-out, then password recovery → new sign-in. Verify reset invalidates earlier sessions.
-- [ ] Complete real Google sign-in, canceled consent and same-email collision checks. Confirm the normal implicit-linking policy with verification/trust safeguards behaves as documented.
-- [ ] Test anonymous/unverified account rejection, cross-user selectors, safe redirects, English/Spanish rendering, keyboard flows and no hydration warnings. Inspect HTTPS cookie and no-store headers through the deployed delivery path.
-- [ ] Verify email background work completes after HTTP response under Vercel, and provider failure is visible through sanitized reporting. Recheck shared rate limits across separate function requests.
+- [ ] On the tested commit, complete registration → real verification → sign-in → account refresh/edit → sign-out, and recovery → new sign-in with all prior sessions revoked.
+- [ ] Complete real Google sign-in, cancellation and same-email linking/collision checks, preserving the agreed trust/verification policy. Provider mocks do not prove console or callback configuration.
+- [ ] Confirm real Resend receipt, correct usable links, background completion after HTTP response and sanitized rejection/failure reporting, as specified in [background-task acceptance](../deployment.md#background-tasks). Verify function budget/serverless lifetime limits; `waitUntil` does not promise durable delivery.
+- [ ] Verify deployed origins/CSRF/OAuth state, HTTPS cookies, safe redirects, anonymous/unverified/cross-user denial and rate limiting across function requests with trustworthy IP handling.
+- [ ] Check shared-cache isolation using independent identities through the delivery path, private headers on personalized responses/errors, SSR refresh/navigation and no hydration/private-payload leakage. Include both locales and keyboard/mobile smoke checks.
+- [ ] Inspect deployed configuration/database/email error paths for actionable sanitized records, keeping tokens, credentials and sensitive data out of provider/application logs and test artifacts.
 
-### 5. Deploy production and verify homepage, protected routes, OAuth and email delivery.
+### 5. Promote production and run environment-specific smoke checks.
 
-- [ ] Promote/deploy the exact passing commit only after the production migration and required gates succeed. Confirm production variables and callbacks again rather than inheriting preview settings implicitly.
-- [ ] Check public `/`, direct unauthenticated `/account`, authenticated refresh, profile update and sign-out with a controlled production test account.
-- [ ] Complete one real verification/recovery delivery and Google login. Confirm generated links and redirects use the production domain and no preview credential/data appears.
-- [ ] Inspect both locales, mobile layout, console/hydration output, cookie attributes and private response headers. Clean only the controlled test data according to the runbook; do not remove unrelated accounts.
-- [ ] Record release success/failures. Halt promotion or invoke the documented compatible rollback/forward-fix procedure if a required auth flow fails.
+- [ ] Release the exact passing commit only after migration and Preview/CI gates succeed. Reconfirm production origins, credentials and callbacks rather than implicitly inheriting Preview settings.
+- [ ] Verify public home, protected direct load/refresh, profile edit and sign-out with controlled production data; complete real verification/recovery and Google login on the production domain.
+- [ ] Check representative locale/mobile rendering, hydration, secure cookies and private response headers. Remove only owned disposable test data; follow the compatible rollback/forward-fix runbook on required failures.
 
-### 6. Verify error reporting and operational recovery readiness.
+### 6. Confirm operational readiness against the actual deployment.
 
-- [ ] Use Vercel's existing logs/error facilities to verify actionable records for configuration failure, database outage and email rejection. Add a small correlation/error-code convention only if necessary; no analytics or observability platform is required.
-- [ ] Confirm logs contain no passwords, session cookies, recovery tokens, provider keys or connection strings. Check the actual deployed error path, not just unit mocks.
-- [ ] Validate the Phase 8 operations runbook against the actual deployment. Confirm Neon's configured restore retention and available recovery/cutover capabilities for the selected plan; record these details, real project/branch identifiers, responsible operators and provider-console links in `docs/deployment.md`, excluding credentials. [Neon branch restore](https://neon.com/docs/introduction/branch-restore).
-- [ ] Confirm the last compatible application release and associated migration records can be located. Verify the operations runbook distinguishes rolling back application code from restoring database state.
-
-### Phase verification
-
-- [ ] CI evidence for `pnpm lint`, `pnpm typecheck`, `pnpm test:run`, `pnpm build` and browser tests is attached to the released commit.
-- [ ] Record passing preview and production real-provider smoke checks, migration targets and deployment URLs without secrets.
-- [ ] Verify application credentials cannot reach the wrong environment and the controlled migration step precedes dependent release traffic.
-
-### Expected state after completion
-
-The starter runs on Vercel with isolated Neon targets, real Google/email flows and verified SSR/session behavior. Release ordering and recovery procedures are documented for the actual environment.
+- [ ] Confirm recovery retention/cutover capabilities, operational owners and access to provider consoles for the chosen environment. Record environment-specific operational details in deployment documentation, separate from reusable setup examples and without secrets.
+- [ ] Locate the last compatible application release and migration records. Confirm rotation/outage procedures and the distinction between application rollback and database restore are usable by the deployment owner.
+- [ ] Associate passing automated and Preview/production acceptance evidence with the released commit, including migrations, environment isolation, provider delivery and serverless/security outcomes. Unresolved required failures block release acceptance.
 
 <a id="phase-10"></a>
 
@@ -431,84 +318,53 @@ The starter runs on Vercel with isolated Neon targets, real Google/email flows a
 
 ### Goal
 
-Make the completed starter reproducible by a new maintainer without undocumented local state, while removing obsolete examples and deployment-specific defaults.
+Make setup reproducible from a clean clone, finish canonical documentation and remove obsolete starter content without repeating prior acceptance unnecessarily.
 
 ### Preconditions
 
-- Phases 1–9 are complete, with reproducible migrations, passing quality gates and recorded real deployment/provider checks.
-- Review the implementation and documentation together; the initial inspection found a generic multi-package-manager README, `Hello Nuxt!`, a header link to `example.com`, and `nuxt-auth-starter.com` in `public/robots.txt` and `public/sitemap.xml`.
+- Phases 4–9 have implementation and acceptance evidence; this phase closes remaining documentation/cleanup gaps.
 
-### 1. Document setup from a fresh clone through migration and first sign-in.
+### 1. Finish the setup and topic documentation.
 
-- [ ] Extend the existing README setup path using the supported Node/pnpm pair, `pnpm install --frozen-lockfile`, `.env.example` copying and each prerequisite account. Keep the final commands aligned with actual package scripts.
-- [ ] Provide the exact order: create isolated Neon target → configure environment → `pnpm db:migrate` using committed migrations → `pnpm dev` → register → open the real verification email → sign in → open `/account`.
-- [ ] Distinguish consuming the starter's committed migrations from changing its auth schema. Put the pinned Better Auth schema-generation command and generate/review/migrate developer workflow in a concise linked database section.
-- [ ] Explain missing credentials, wrong callback URL, unverified sender and absent migrations with symptoms and concrete checks that do not expose secrets. Do not recommend disabling security, using `push` in production or setting a verified flag manually.
+- [ ] Verify README's clean clone → frozen install → configure → migrate → run → validate path, including prerequisites and first verified sign-in. README, environment examples, scripts, CI and deployment instructions agree and distinguish consuming migrations from changing schema.
+- [ ] Keep variable definitions/setup in README, current auth/database/testing/deployment behavior in topic documents and durable rationale in ADRs. Document the agreed verification, reset/session, Google linking, display-name-only and provider boundaries without duplicating them across documents.
+- [ ] Cover Google/email setup, safe callbacks, the chosen rate-limit strategy and deployment/operations procedures actually implemented. Troubleshooting must not recommend weakening security, production `push` or manual verification flags.
+- [ ] Documentation links and API/CLI examples match the final repository, with no obsolete implementation notes or completed work presented as pending.
 
-### 2. Document environment variables, Google setup, email delivery and deployment.
+### 2. Clean reusable starter content.
 
-- [ ] Extend README environment configuration with every actual `NUXT_*` variable, runtime key, required phase/environment, safe example and purpose. Link the database document for tooling lookup; keep each variable definition in one canonical home.
-- [ ] Document Google console setup, exact provider callback path, safe application return destinations, consent/test-user requirements and normal implicit linking with verification/trust safeguards. Explain accepted trustworthy linking and rejected unsafe collisions.
-- [ ] Document Resend sender verification, private key/sender configuration, controlled test recipient, generic request acknowledgements and background-delivery diagnostics. Use plain templates and the implemented provider only.
-- [ ] Finish `docs/deployment.md` with Vercel environment isolation, Node/pnpm settings, controlled preview hostname, migration-before-release sequence and production smoke checklist. Verify its operations runbook reflects the recovery and secret-rotation procedures and environment-specific details confirmed in Phases 8–9.
-- [ ] Keep documentation provider links current and applicable to the implemented versions: [Better Auth Nuxt](https://better-auth.com/docs/integrations/nuxt), [Drizzle Neon](https://orm.drizzle.team/docs/connect-neon), [Vercel Nuxt](https://vercel.com/docs/frameworks/full-stack/nuxt). Do not copy release-line-changing `@latest` commands into setup instructions.
+- [ ] Replace obsolete homepage/header examples and placeholder branding with neutral localized starter guidance and working navigation. Review title/description/logo/favicon/footer without rebuilding the design system or moving tool-owned files.
+- [ ] Remove hardcoded deployment domains from sitemap/robots or use the implemented origin configuration. Private/auth/recovery routes do not belong in a public sitemap; robots rules are not authorization.
+- [ ] Remove obsolete probes, route shells, stale examples and demonstrated unused code while retaining intentional components. Check tracked app/docs/config for secrets, private addresses, obsolete variables and deployment-specific values; use placeholders or separate operational notes where appropriate.
 
-### 3. Explain session ownership, server authorization and test boundaries briefly.
+### 3. Verify reproducibility from a clean clone.
 
-- [ ] Add a short architecture section identifying `app/lib/auth-client.ts`, server auth factory/runtime assembly, `/api/auth/[...all]`, `require-session.ts`, `/api/account`, `server/database/` and safe `shared/` validation/redirect utilities.
-- [ ] Explain that Better Auth owns identity/session state, route middleware handles navigation UX, and server handlers enforce verified identity/ownership independently. Describe `useSession(useFetch)` SSR integration and why a second session store is absent.
-- [ ] State the deliberate profile scope (display name only), verification/access policy, reset revocation, normal implicit linking with verification/trust safeguards, HTTP adapter transaction setting and database-backed rate limiter.
-- [ ] Link `docs/testing.md`: pure Node unit tests, Nuxt runtime tests, live Nitro/database integration tests and real browser tests. Separate deterministic provider fixtures from mandatory real-provider deployment checks.
-- [ ] Keep this explanation short enough to use as a file map; do not add an architecture layer merely to make the documentation diagram more elaborate.
-
-### 4. Remove obsolete examples, placeholder branding and deployment-specific values.
-
-- [ ] Replace the homepage placeholder with concise starter setup/status guidance and working auth/account navigation. Remove the obsolete `example.com` header link. Keep localization parity in English and Spanish.
-- [ ] Review app title/description, `AppLogo.vue`, footer text and favicon for a neutral reusable identity. Keep existing tool-owned UI paths and Tailwind 4 CSS structure; no design-system rebuild is needed.
-- [ ] Remove the hardcoded `nuxt-auth-starter.com` sitemap/robots references or replace them with the implemented configurable production-origin approach. Do not publish private/auth/recovery URLs in a sitemap, and do not treat robots rules as authorization.
-- [ ] Remove temporary connectivity probes, route shells, stale auth examples and unused code from implementation phases. Preserve intentional UI components and unrelated changes; do not delete files merely because they were not used in the first screen.
-- [ ] Search tracked application/docs/config files for real domain values, keys, private emails, token examples and obsolete environment names. Replace deployment-specific documentation with placeholders or clearly separated operational notes.
-- [ ] Move implemented behavior from the roadmap into the canonical topic documentation and remove completed checklist items. Keep these plans as future-agent guidance rather than silently claiming every planned verification was executed.
-
-### 5. Verify a fresh clone can pass validation and deploy using only the documentation.
-
-- [ ] Use a clean disposable checkout with no inherited `.env`, `.nuxt`, installed modules or test database. Follow README exactly on the supported Node/pnpm pair; record missing steps and correct documentation immediately.
-- [ ] Provision isolated credentials/targets as documented, install from the lockfile and apply committed migrations to an empty database. Verify first sign-in, account editing, recovery and sign-out without manual database edits.
-- [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:run`, `pnpm build` and browser tests with documented test configuration. Confirm actual tests are discovered and migration replay/drift checks pass.
-- [ ] Deploy the clean checkout to an isolated Vercel preview using only `docs/deployment.md`. Complete real Google/email smoke checks; document external credentials/access as prerequisites rather than claiming zero configuration.
-- [ ] Verify generated output/secret files remain ignored and the checkout has no unexplained tracked changes after setup. Remove only disposable validation resources that were created for this exercise.
-
-### Phase verification
-
-- [ ] Trace every roadmap definition-of-done item to passing automated evidence or a recorded real-environment manual check.
-- [ ] Confirm README, `.env.example`, actual scripts, CI and deployment settings agree; all referenced local files and instructions exist.
-- [ ] Confirm a fresh-clone setup and isolated preview deployment succeeded, or explicitly report the exact unmet external prerequisite without declaring the phase complete.
-- [ ] Verify no out-of-scope feature or unnecessary dependency was introduced during cleanup.
-
-### Expected state after completion
-
-A new maintainer can install, configure, migrate, test and deploy the starter from its documentation. The reusable baseline retains only the intended auth/account scope, with clear security, SSR, testing and operational boundaries.
+- [ ] In a disposable clean checkout without inherited environment/generated files, follow the documented supported setup and apply committed migrations to an empty isolated target. Prove first sign-in, account editing, recovery and sign-out without manual database changes.
+- [ ] Documented validation discovers real tests and produces the required migration, browser and compilation evidence from the clean checkout, reusing applicable Phase 7/9 evidence.
+- [ ] Confirm the documented deployment path is reproducible from a clean checkout. This can be the same clean checkout used for Phase 9 Preview acceptance; repeat a deployment/provider check only if missing evidence or subsequent changes require it.
+- [ ] Verify secret/generated files remain ignored, setup leaves no unexplained tracked changes and only owned disposable validation resources are cleaned up.
 
 ## Dependency chain
 
-Foundation → Configuration → Database connection → Auth schema and migration → Auth server and authorization → Client sessions and page access → Auth/account UI → Final quality gates → Production → Reusable-starter cleanup
+Implemented foundation (Phases 1–3, 4.1–4.2) → server policies (4.3–4.5) → client sessions/page access (5) → auth/account UI (6) → coverage/CI (7) → security controls/runbook (8) → final Preview acceptance and production release (9) → reproducibility/cleanup (10).
 
-Tests accompany implementation; CI and security gates must pass before production.
+Preview provisioning/provider acceptance may begin before Phase 8 is complete. Phase 8 prepares controls/runbooks; Phase 9 accepts them in the deployed environment. Phase 10 may share Phase 9's clean-checkout deployment evidence.
 
 ## Definition of done
 
-- [ ] Email/password, Google OAuth, verification, recovery and sign-out work end to end.
-- [ ] Protected APIs enforce identity and ownership independently of page middleware.
-- [ ] Sessions and protected pages work correctly across SSR, refreshes and navigation.
-- [ ] Forms are validated, accessible and handle expected failures.
-- [ ] Versioned migrations reproduce the database from scratch.
-- [ ] Meaningful tests, lint, typecheck and build pass in CI.
-- [ ] Vercel/Neon deployment and email delivery are verified, and recovery procedures are documented.
-- [ ] A new developer can configure and launch the starter from its documentation.
+- [ ] Email/password, Google, verification, recovery and sign-out meet Phase 4/6 contracts with real-provider acceptance in Phase 9.
+- [ ] Protected APIs enforce verified identity/ownership independently of page middleware; reset/sign-out/expiry revoke access authoritatively.
+- [ ] SSR, hydration, refresh/navigation, safe redirects and cross-user/cache isolation meet Phases 5/7/8 acceptance.
+- [ ] Forms are validated, localized, accessible and handle expected failures.
+- [ ] Committed migrations reproduce an empty database without drift; dependent releases follow controlled migration ordering.
+- [ ] Required lint, typecheck, meaningful tests/browser checks and production compilation evidence pass in CI.
+- [ ] Serverless security/abuse controls, real delivery and operational procedures are verified for the actual Vercel/Neon deployment.
+- [ ] Clean-clone setup and documented deployment are reproducible, with no unfinished acceptance hidden by cleanup.
 
 ## Planned maintenance
 
-- [ ] Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 reaches a stable release and compatibility with the starter's dependencies and deployment is verified; see [Build performance on Windows](../../README.md#build-performance-on-windows).
+- [ ] Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 is stable and dependency/deployment compatibility is verified; see [Build performance on Windows](../../README.md#build-performance-on-windows).
+- [ ] During that migration, review server APIs and background execution, including whether the Vercel provider can be simplified or removed ([ADR 005](../decisions/005-background-tasks.md)). Preserve lifecycle, preflight and sanitized-failure guarantees; revalidate affected deployed behavior.
 
 ## Out of scope
 

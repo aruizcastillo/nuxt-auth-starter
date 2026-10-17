@@ -2,7 +2,7 @@
 
 This repository is a clean, reusable Nuxt application starter.
 
-The goal is not merely to make features work. Use the current, idiomatic approach compatible with the exact installed version of each framework and library. Prefer official guidance where authoritative, verified ecosystem conventions where official guidance is silent, and custom solutions only when a concrete requirement justifies them.
+Use idiomatic approaches compatible with the installed dependencies while preserving the project's agreed scope and architecture.
 
 ## Core rules
 
@@ -13,37 +13,21 @@ The goal is not merely to make features work. Use the current, idiomatic approac
 * SSR, hydration, accessibility, security and server-side authorization must remain correct where applicable.
 * Never replace an intentional project decision merely because another valid approach exists.
 
-## Versions and sources
+## Project decisions and technical verification
+
+These answer different questions:
+
+- **Project decisions:** this file, accepted ADRs and deliberate repository conventions define requirements, scope and architectural constraints. Relevant topic documentation describes the current implementation; the roadmap distinguishes pending requirements from proposals. An alternative in official documentation does not by itself overturn an agreed choice.
+- **Technical verification:** the dependency versions and verified APIs/behavior determine how those requirements can be implemented. Project instructions and examples cannot make an unsupported API valid. If a decision conflicts with technical evidence, explain the conflict and resolve it before changing the decision or introducing a workaround.
 
 Before version-sensitive work:
 
-1. Read `package.json` and the lockfile.
-2. Determine the exact resolved version from the lockfile or installed package.
-3. Use official documentation for that version or version line.
-4. Check official migration/upgrade guidance when APIs may have changed.
-5. If ambiguity remains, inspect official source, package types or the installed implementation.
-6. Use ecosystem conventions only when higher-priority sources do not prescribe the choice.
+1. Read `package.json` and resolve the relevant exact versions from the lockfile or installed packages.
+2. Consult applicable official documentation and migration/upgrade guidance for that version or version line.
+3. Check installed types, implementation or matching official source when documentation is ambiguous, differs from the installed version or leaves behavior uncertain. Resolve discrepancies using evidence from the installed dependency rather than assuming an example applies.
+4. Where official guidance does not prescribe a choice, use a verified compatible ecosystem convention; use a custom solution only for a concrete unmet requirement.
 
-Source priority:
-
-1. `AGENTS.md`
-2. Official project/library skills
-3. Official documentation for the installed version
-4. Official migration/upgrade guides
-5. Official source and installed package types
-6. Intentional repository conventions
-7. Verified current ecosystem conventions
-8. High-quality community material
-9. Other examples
-10. Agent prior knowledge
-
-Do not assume search results, blogs, Stack Overflow, GitHub discussions, old docs or model knowledge apply to the installed version.
-
-### Drizzle prerelease
-
-Drizzle ORM and Kit use `1.0.0-rc.4`.
-
-Treat stable 0.x examples as potentially obsolete. Do not introduce 0.x relations, configuration, query or migration patterns unless current 1.0 RC guidance confirms them.
+Skills are auxiliary references and may be outdated, including project/library skills. Their examples and recommendations never override verified APIs or behavior of installed dependencies. Apply the same compatibility checks to skills, search results, community material and prior knowledge; none establishes a project decision on its own.
 
 ## Ambiguity
 
@@ -59,40 +43,18 @@ Review the relevant topic documents in `docs/` and architectural decisions in `d
 
 Maintain:
 
-* `docs/*.md` describes current behavior.
-* `docs/roadmap/*` describes future work.
-* `docs/decisions/*` explains durable architectural decisions and constraints.
+* `README.md`: the user-facing clean clone → install → configure → migrate → run → validate path, with deployment prerequisites and links.
+* `docs/*.md`: current implementation details and operational/validation procedures.
+* `docs/roadmap/*`: remaining scope, dependencies and acceptance criteria, distinguishing requirements, agreed decisions and proposals.
+* `docs/decisions/*`: durable architectural decisions and rationale.
 
 Update existing topic files instead of creating documentation for every small task.
 
 Keep each fact in one canonical home and link to it from other documents. Remove completed phase summaries, migration checkpoints and obsolete implementation notes; Git preserves their history. Retain important architectural reasoning in ADRs, not historical logs.
 
-### README
-
-`README.md` is the primary user-facing setup path, not an implementation log.
-
-Its purpose is to support:
-
-```text
-clean clone → install → configure → migrate → run → validate
-```
-
-Use:
-
-* `README.md` for installation, configuration, database setup, development, validation and deployment.
-* `docs/*.md` for current implementation details and useful validation procedures.
-* `docs/decisions/` for architectural rationale.
-* `docs/roadmap/` for incomplete/planned work.
-
 When implementation changes the normal setup or usage path, update the README in the same work.
 
-Prefer concrete commands and required values over architectural explanation.
-
-Do not keep repository-specific development history in the README, including timestamps, phase logs, disposable branches, Neon project IDs, agent/CLI setup notes, investigation history or internal validation details.
-
-Verify README commands, environment variables and setup instructions against the actual repository before changing them.
-
-Never document planned functionality as already available.
+Keep README brief, with concrete commands and required values checked against the repository. Keep phase logs, investigation history, agent/CLI setup notes, disposable infrastructure identifiers and internal validation details out of it. Never document planned functionality as already available.
 
 ## Architecture
 
@@ -104,13 +66,9 @@ framework/library primitive
 → application code
 ```
 
-Add a layer only when it isolates real complexity, establishes a meaningful boundary, or removes demonstrated duplication.
+Keep integration-specific configuration, validation and implementation in the owning module, for example `database/providers/neon.ts`, `email/providers/resend.ts` or `auth/providers/google.ts`. Provider-independent domain logic stays outside it; consumers use a simple owning-module boundary rather than importing provider internals.
 
-- Keep external providers and clients loosely coupled and locally owned. Integration-specific configuration, validation, and implementation should stay with that integration, while provider-independent domain logic stays outside it. Prefer simple composition over generic registries, adapters, plugin systems, or speculative abstractions.
-
-- When adding or changing a feature, preserve clear ownership boundaries. A concrete integration or domain should not leak its configuration, data model, or implementation details into unrelated parts of the application. If removing or replacing one integration would require changes to unrelated code, review the boundary before proceeding.
-
-- Keep provider-specific implementations inside the module that owns the integration, for example `database/providers/neon.ts`, `email/providers/resend.ts`, or `auth/providers/google.ts`. Unrelated application code should depend on the owning module boundary rather than importing provider implementations directly when a simple boundary is sufficient.
+Prefer composition over generic registries or plugin systems. If removing or replacing an integration requires changes to unrelated code, review that boundary before proceeding.
 
 ## Framework ownership
 
@@ -126,7 +84,7 @@ Do not reorganize tool-owned structures merely for architectural uniformity.
 
 ## Nuxt
 
-Follow Nuxt 4 conventions.
+Maintain Nuxt 4 / Nitro 2 until the planned Nuxt 5 / Nitro 3 migration meets the [roadmap's compatibility conditions](docs/roadmap/roadmap.md#planned-maintenance). Prefer official portable APIs such as `nuxt/server` when verified against the installed version. Prepare through compatible boundaries and targeted upgrade review, without adopting future-major APIs or starting the migration early.
 
 Use the standard boundaries:
 
@@ -139,15 +97,11 @@ public/    static public files
 
 Prefer Nuxt-native primitives such as `$fetch`, `useFetch`, `useAsyncData`, `useRequestFetch`, `useRuntimeConfig`, middleware, Nitro handlers and plugins.
 
-SSR and hydration correctness are mandatory.
-
 Do not hide SSR issues with `ClientOnly`, `onMounted()`, arbitrary delays or manual header/cookie forwarding when a supported SSR-safe solution exists.
 
 ## Better Auth
 
 Better Auth is the sole authentication authority.
-
-Use guidance compatible with installed Better Auth `1.7.x`.
 
 Do not:
 
@@ -160,22 +114,11 @@ Server-side identity and authorization remain authoritative.
 
 ## Drizzle
 
-Use current Drizzle 1.0 RC APIs.
-
-Prefer typed relational schemas and current relations APIs.
+Use typed relational schemas and relations/query/migration APIs compatible with the installed Drizzle prerelease. Stable-release examples and metadata layouts are potentially incompatible; verify them before use.
 
 Do not use generic JSONB models, runtime tables or runtime DDL to avoid deliberate schema design.
 
-Production schema changes use:
-
-```text
-schema
-→ drizzle-kit generate
-→ review migration
-→ drizzle-kit migrate
-```
-
-`push` may be used when appropriate in development, but it is not the production migration workflow.
+Use reviewed, committed, versioned migrations for shared environments ([ADR 004](docs/decisions/004-versioned-migrations.md)); follow the [database procedure](docs/database.md#migration-procedure). `push` is limited to deliberate development use, not production migration.
 
 ## Neon and Vercel
 
@@ -191,35 +134,25 @@ Keep local, preview and production databases/secrets isolated.
 
 ## Frontend stack
 
-Use shadcn-vue as the component layer and Reka UI for primitive behavior.  
-
-Use shadcn-vue conventions for generated components and Reka UI documentation/skills for primitive behavior such as `as-child`, focus management, portals, keyboard interaction, controlled state, dismissable layers, and menu/dialog/popover semantics.
-
-Maintain valid HTML and accessibility.
+Use shadcn-vue conventions for generated components and verified Reka UI behavior for composition, focus, keyboard interaction, portals and controlled state. Maintain valid, accessible HTML.
 
 The project uses Tailwind CSS 4 with `@tailwindcss/vite`. Do not introduce Tailwind 3 configuration or legacy setup.
 
-Forms use vee-validate + Zod 4. Client validation improves UX; server validation remains authoritative.
+Forms use vee-validate + Zod. Client validation improves UX; server validation remains authoritative.
 
-Use current `@nuxtjs/i18n 10.x` conventions.
+Use installed `@nuxtjs/i18n` conventions and preserve the agreed locale/routing behavior.
 
 Prefer VueUse for common reactive/browser behavior when appropriate, especially where SSR matters.
 
 ## State and HTTP
 
-Pinia and Axios are intentionally not included in the base starter.
-
-Prefer Vue/Nuxt primitives when sufficient. Use `$fetch`, `useFetch`, `useAsyncData` and `useRequestFetch` according to their intended SSR and client-side roles.
+Use Vue/Nuxt primitives for application state and HTTP according to their SSR and client-side roles.
 
 Small domain-oriented service modules are valid for imperative HTTP operations. Keep them focused on transport and API contracts, not duplicated state or application logic.
-
-Add Pinia, Axios or broader HTTP abstractions only when a concrete requirement justifies them.
 
 ## Testing
 
 Use Vitest for pure unit tests and `@nuxt/test-utils` when Nuxt runtime behavior is required.
-
-Do not boot Nuxt for pure utilities.
 
 Use real integration boundaries when behavior depends on database access, cookies, sessions, routing or Nitro.
 
@@ -227,11 +160,13 @@ Mock external providers where appropriate, not framework/database behavior that 
 
 Tests must not silently pass because required integration infrastructure is unavailable.
 
+Choose checks and commands according to [validation scope](docs/testing.md#validation-scope), including its separate full-suite and production-build paths.
+
 ## TypeScript and ESLint
 
 Keep Nuxt's generated ESLint flat configuration as the base.
 
-TypeScript `6.0.x` is intentional.
+The current TypeScript major is intentional; upgrading it requires a compatibility review.
 
 Do not fix type problems with broad `any`, unsafe casts, `@ts-ignore` or disabled rules unless an external defect is documented and the workaround is narrowly scoped.
 
@@ -250,40 +185,18 @@ Axios, Pinia, Prisma, Firebase, Clerk, Supabase Auth, TanStack Query, Redis, tRP
 
 ## Failures and workarounds
 
-When something fails:
-
-1. Reproduce and isolate it.
-2. Verify exact installed versions.
-3. Read current official guidance.
-4. Check migration/upgrade notes.
-5. Inspect source/types if necessary.
-6. Use the supported solution where one exists.
-7. Otherwise use a verified current convention.
-8. Use a custom workaround only when the supported approaches do not satisfy the requirement.
-
-Do not reflexively use `ClientOnly`, `onMounted`, timers, `eslint-disable`, `@ts-ignore`, dependency downgrades, pnpm overrides, manual cookie forwarding or duplicated state.
-
-Document necessary workarounds and their reason.
+Reproduce and isolate the failure, then use the technical verification process above to find the supported solution. Do not bypass investigation with dependency downgrades, pnpm overrides, timers or the SSR/type workarounds prohibited above. Document any necessary narrow workaround and its reason.
 
 ## Before completing work
 
 For framework/library changes:
 
-* confirm exact versions;
-* verify against applicable official guidance;
-* ensure no legacy patterns were introduced;
 * verify SSR/hydration where relevant;
 * verify accessibility and security where relevant;
 * remove unnecessary abstractions/workarounds;
 * update relevant documentation;
 * run appropriate validation.
 
-Run only the validations relevant to the changes. Avoid unnecessary tests and builds, especially redundant production builds. See [validation scope](docs/testing.md#validation-scope) for details.
-
 If a command cannot run or fails for unrelated reasons, report it explicitly.
 
 Never claim completion while knowingly leaving unexplained lint, type, test or build failures.
-
-## Final rule
-
-Choose the current, idiomatic approach compatible with the exact installed version: official guidance where authoritative, established conventions where official guidance is silent, and custom solutions only when a concrete requirement justifies them.

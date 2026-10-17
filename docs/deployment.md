@@ -26,7 +26,7 @@ Missing/invalid support logs only `background_tasks_unavailable` within the prov
 
 Vercel background work shares the function's maximum duration and can be canceled on timeout; process termination can also interrupt work. The transport's ten-second deadline must fit within the remaining function budget, including auth/database work. Provider timeout/network failure can leave acceptance uncertain.
 
-Before treating a Vercel deployment as verified, use an isolated preview and controlled mailbox to send verification and recovery emails, confirm correct environment URLs and usable links, and confirm completion after the HTTP response. Exercise a provider rejection and inspect sanitized logs. Automated fixtures and a local Vercel-preset build do not establish real receipt or deployed lifecycle support; those external checks remain pending.
+Before treating a Vercel deployment as verified, use an isolated preview and controlled mailbox to send verification and recovery emails, confirm correct environment URLs and usable links, and confirm completion after the HTTP response. Exercise a provider rejection and inspect sanitized logs. Automated fixtures and a local Vercel-preset build do not establish real receipt or deployed lifecycle support; those external checks remain pending in [Phase 9](roadmap/roadmap.md#phase-9).
 
 ## Environment isolation
 
@@ -34,4 +34,4 @@ All `NUXT_*` settings are private runtime configuration. Local Nuxt dev/build/pr
 
 `.env.production` is an optional ignored local reference, not automatically loaded by this setup and not deployment configuration. Do not source it into a development/test shell or select it through dotenv flags. Prefer encrypted storage for production values; ignored plaintext can still leak through backups, sync or accidental copying. Use a fresh shell for each database target.
 
-The [README environment table](../README.md#environment-configuration) owns the variable contract; [database](database.md#environment-convention) describes tooling lookup. Production migration ordering, provider callbacks, shared rate limiting, security checks and recovery runbooks remain in the [roadmap](roadmap/roadmap.md#phase-9).
+The [README environment table](../README.md#environment-configuration) owns the variable contract; [database](database.md#environment-convention) describes tooling lookup. Security controls, the serverless rate-limit choice and recovery runbooks remain in [Phase 8](roadmap/roadmap.md#phase-8); real provider/callback configuration, deployed acceptance and migration/release ordering belong to [Phase 9](roadmap/roadmap.md#phase-9).

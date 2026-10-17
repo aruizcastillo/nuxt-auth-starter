@@ -29,7 +29,7 @@ describe('background email delivery', () => {
     await Promise.all(tasks)
     const requested = vi.mocked(console.info).mock.calls[0]
     expect(requested).toEqual(['auth_email_requested', { purpose: 'verification', deliveryId: expect.any(String) }])
-    expect(console.info).toHaveBeenLastCalledWith('auth_email_accepted', requested?.[1])
+    expect(console.info).toHaveBeenLastCalledWith('auth_email_accepted', { ...requested?.[1], providerMessageId: id })
     expect(console.error).not.toHaveBeenCalled()
   })
 

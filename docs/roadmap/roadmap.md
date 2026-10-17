@@ -35,6 +35,7 @@ Current callbacks, transport and background providers are described in [authenti
 
 ### 3. Define verified-email access and password-reset session behavior.
 
+- [ ] Extend the explicit email availability preflight and its tests whenever adding a new sending flow, including sign-in-triggered verification if enabled. See [current preparation behavior](../authentication.md#verification-and-recovery-delivery).
 - [ ] Set `emailAndPassword.requireEmailVerification: true` and choose `autoSignInAfterVerification: false` so verification leads to explicit sign-in. Preserve the existing registration email trigger. [Email verification guidance](https://better-auth.com/docs/concepts/email).
 - [ ] Add `server/utils/require-session.ts`: resolve identity using `auth.api.getSession({ headers: event.headers })`, return 401 for absent/expired identity and 403 with a stable safe code for an unverified identity. Return only the server-verified user needed by callers. The verified-email rule must apply to Google sessions too; the credential option alone does not enforce that.
 - [ ] Set `emailAndPassword.revokeSessionsOnPasswordReset: true`. Require sign-in with the new password after reset; retain disabled cookie caching so old sessions cannot survive in a cache.

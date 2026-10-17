@@ -20,8 +20,8 @@ export function createEmailSender(config: unknown, register: (task: Promise<unkn
     const task = Promise.resolve().then(async () => {
       if (!registered) return
       try {
-        await send(email)
-        console.info('auth_email_accepted', { purpose, deliveryId })
+        const { id: providerMessageId } = await send(email)
+        console.info('auth_email_accepted', { purpose, deliveryId, providerMessageId })
       }
       catch (error) {
         const code = error instanceof ResendDeliveryError ? error.code : 'unexpected'

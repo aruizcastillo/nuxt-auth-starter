@@ -6,7 +6,7 @@ A reusable Nuxt 4 starter with a public application shell and server-side authen
 
 Neon is the default PostgreSQL provider, but the database layer is structured so another PostgreSQL client can be used without changing the schema, migrations or authentication model.
 
-The current implementation includes the Better Auth server endpoint, auth schema, initial migration and Resend verification/recovery emails.
+The current implementation includes the Better Auth server endpoint, auth schema, initial migration, and email verification and password recovery, using Resend as the reference email provider.
 
 Sign-in and account pages, verification/recovery screens, Google OAuth, protected application pages and the final authentication policy remain planned work in the [roadmap](docs/roadmap/roadmap.md).
 
@@ -56,7 +56,7 @@ npm install --global pnpm@12.3.4
    cp .env.example .env
    ```
 
-4. Configure PostgreSQL, Better Auth and Resend as described in [Environment configuration](#environment-configuration) and [Database setup](#database-setup).
+4. Configure PostgreSQL, Better Auth and email delivery (Resend by default) as described in [Environment configuration](#environment-configuration) and [Database setup](#database-setup).
 
 5. Apply the migrations:
 
@@ -86,8 +86,8 @@ The current database and auth setup uses:
 | `NEON_BRANCH` | Selected Neon branch used by Neon/test tooling. |
 | `NUXT_BETTER_AUTH_SECRET` | Better Auth secret. Use a random value of at least 32 characters. |
 | `NUXT_BETTER_AUTH_URL` | Application origin used by Better Auth. Use `http://localhost:3000` locally. |
-| `NUXT_RESEND_API_KEY` | Resend sending key, required by runtime auth. |
-| `NUXT_EMAIL_FROM` | Resend-authorized sender, as `sender@example.com` or `App <sender@example.com>`. |
+| `NUXT_RESEND_API_KEY` | Sending key for the reference Resend transport. |
+| `NUXT_EMAIL_FROM` | Email sender authorized by the chosen provider, as `sender@example.com` or `App <sender@example.com>`. |
 
 Generate a Better Auth secret with:
 
@@ -97,7 +97,9 @@ pnpm auth:secret
 
 The CLI generates a `BETTER_AUTH_SECRET` entry. Copy its value into `NUXT_BETTER_AUTH_SECRET` in your `.env` file.
 
-Configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required for runtime auth routes, including registration, which now sends verification email. Auth schema tooling does not require email settings.
+For the included Resend transport, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required for registration, verification resend and recovery requests. Login, sessions, logout and consumption of existing links do not require email availability. Auth schema tooling does not require email settings.
+
+Resend is the reference email provider. Other providers can be integrated by replacing the email transport and its configuration without changing Better Auth or background execution. See the [email transport boundary](docs/authentication.md#isolated-email-transport) for replacement details.
 
 Background delivery supports local Nitro development, persistent Node servers and Vercel's Node runtime. Other serverless targets require a verified integration; see [deployment](docs/deployment.md#background-tasks).
 
@@ -249,3 +251,4 @@ The Nuxt maintainers confirmed that this issue has been fixed in Nitro 3. **Migr
   - [Neon HTTP](docs/decisions/002-neon-http.md)
   - [Cookie cache](docs/decisions/003-cookie-cache-disabled.md)
   - [Versioned migrations](docs/decisions/004-versioned-migrations.md)
+  - [Background execution](docs/decisions/005-background-tasks.md)

@@ -10,19 +10,19 @@ The Vercel function runtime is explicitly `nodejs24.x` through `nitro.vercel.fun
 
 ## Background tasks
 
-`server/background/index.ts` uses `import.meta.preset`, fixed by Nitro during the build from explicit configuration or hosting detection. Each auth request obtains the corresponding handler and checks availability before calling Better Auth; it does not detect the host dynamically. There is no global plugin or shared request state. [ADR 005](decisions/005-background-tasks.md) records the rationale and rejected alternatives.
+`server/background/index.ts` uses `import.meta.preset`, fixed by Nitro during the build from explicit configuration or hosting detection. Auth requests that can send email obtain the corresponding handler during [sender preparation](authentication.md#verification-and-recovery-delivery); other operations do not require it. The host is not detected dynamically. There is no global plugin or shared request state. [ADR 005](decisions/005-background-tasks.md) records the rationale and rejected alternatives.
 
 | Preset | Provider | Supported lifetime |
 | --- | --- | --- |
 | `nitro-dev`, `node-server` | `providers/nitro.ts` | Local development and persistent Node servers; uses Nitro 2's `event.waitUntil`. |
 | `vercel` | `providers/vercel.ts` | Vercel Node Functions; uses the public `@vercel/functions.waitUntil`. |
-| Anything else | None | Auth fails explicitly; another serverless host needs a verified integration. |
+| Anything else | None | Email-sending auth flows fail explicitly; another serverless host needs a verified integration. |
 
 Installed Nuxt 4.6.1's portable `RequestEvent` does not declare `waitUntil`. Nitro 2.13.4 attaches it at runtime and delegates to `event.context.waitUntil` when supplied; its Vercel preset does not wire that context. The Nitro provider checks the actual event method; the Vercel provider registers directly with the hosting helper. See [Nitro 2 runtime](https://github.com/nitrojs/nitro/blob/v2/src/runtime/internal/app.ts) and [Vercel API](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#waituntil).
 
 `@vercel/functions` is pinned to **3.10.1**. Its installed `wait-until.js` silently returns when request context lacks `waitUntil`, and its public exports offer no capability check. To detect that failure, only `providers/vercel.ts` reads the internal `Symbol.for('@vercel/request-context')` reader and verifies its current context has an invocable `waitUntil`, both during assembly and registration. Actual task registration still uses the public helper. Neither a Vercel environment variable nor `getDeadline()` proves this capability. This narrow internal dependency is justified by the no-silent-loss requirement; do not import private package paths or spread this check outside the provider. Recheck the pinned package implementation and tests on upgrade. Official source: [context](https://github.com/vercel/vercel/blob/main/packages/functions/src/get-context.ts), [registration](https://github.com/vercel/vercel/blob/main/packages/functions/src/wait-until.ts).
 
-Missing/invalid support logs only `background_tasks_unavailable` and fails the auth request before account lookup, without sending. Later transport/registration failure is reported through the [email events](authentication.md#verification-and-recovery-delivery), preserving native acknowledgements.
+Missing/invalid support logs only `background_tasks_unavailable` within the provider. Auth sender preparation reports generic unavailability and stops email-sending flows before account lookup, without sending. Later transport/registration failure is reported through the [email events](authentication.md#verification-and-recovery-delivery), preserving native acknowledgements.
 
 Vercel background work shares the function's maximum duration and can be canceled on timeout; process termination can also interrupt work. The transport's ten-second deadline must fit within the remaining function budget, including auth/database work. Provider timeout/network failure can leave acceptance uncertain.
 

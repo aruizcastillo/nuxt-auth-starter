@@ -1,12 +1,17 @@
+
 {
   "app": {
-    "name": "Nuxt Starter",
-    "title": "Nuxt Starter",
-    "description": "An opinionated Nuxt starter."
+    "name": "Nuxt Auth Starter",
+    "title": "Nuxt Auth Starter",
+    "description": "A Nuxt starter with preconfigured authentication."
   },
   "home": { "greeting": "Hello Nuxt!" },
   "navigation": { "main": "Main navigation" },
-  "common": { "language": "Language", "style": "Style", "theme": "Theme", "retry": "Try again" },
+  "common": {
+    "language": "Language",
+    "theme": "Theme",
+    "retry": "Try again"
+  },
   "auth": {
     "signIn": "Sign in",
     "register": "Create an account",
@@ -22,6 +27,13 @@
     "signingOut": "Signing out…",
     "signOutError": "We couldn't sign you out. Try again."
   },
-  "languages": { "en": "English", "es": "Spanish" },
-  "theme": { "system": "System", "light": "Light", "dark": "Dark" }
+  "languages": {
+    "en": "English",
+    "es": "Spanish"
+  },
+  "theme": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  }
 }

@@ -1,17 +1,22 @@
+
 {
   "app": {
-    "name": "Nuxt Starter",
-    "title": "Plantilla de Nuxt",
-    "description": "Una plantilla de Nuxt con convenciones predefinidas."
+    "name": "Nuxt Auth Starter",
+    "title": "Nuxt Auth Starter",
+    "description": "Una plantilla de Nuxt con autenticación preconfigurada."
   },
   "home": { "greeting": "¡Hola, Nuxt!" },
   "navigation": { "main": "Navegación principal" },
-  "common": { "language": "Idioma", "style": "Estilo", "theme": "Tema", "retry": "Volver a intentar" },
+  "common": {
+    "language": "Idioma",
+    "theme": "Tema",
+    "retry": "Volver a intentar"
+  },
   "auth": {
     "signIn": "Iniciar sesión",
     "register": "Crear una cuenta",
     "verifyEmail": "Verifica tu correo",
-    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotPassword": "¿Has olvidado tu contraseña?",
     "resetPassword": "Restablece tu contraseña"
   },
   "account": {
@@ -22,6 +27,13 @@
     "signingOut": "Cerrando sesión…",
     "signOutError": "No se pudo cerrar tu sesión. Vuelve a intentarlo."
   },
-  "languages": { "en": "Inglés", "es": "Español" },
-  "theme": { "system": "Sistema", "light": "Claro", "dark": "Oscuro" }
+  "languages": {
+    "en": "Inglés",
+    "es": "Español"
+  },
+  "theme": {
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro"
+  }
 }

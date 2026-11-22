@@ -2,7 +2,7 @@
 
 This file describes remaining scope, dependencies and acceptance criteria. Current behavior lives in [authentication](../authentication.md), [database](../database.md), [testing](../testing.md) and [deployment](../deployment.md); setup lives in [README](../../README.md). Working instructions belong to [AGENTS.md](../../AGENTS.md).
 
-Phase numbers are retained for dependency references. Phases 1–3 and credential registration/sign-in/sign-out are represented by current documentation. Phase 4.1–4.3 are implemented for the Node baseline; their real-provider/deployment acceptance remains pending in Phase 9.
+Phase numbers are retained for dependency references.
 
 ## Scope and acceptance
 
@@ -10,43 +10,13 @@ Phase numbers are retained for dependency references. Phases 1–3 and credentia
 - **Agreed decisions:** preserve [Better Auth ownership](../decisions/001-better-auth.md), [Neon HTTP and transaction constraints](../decisions/002-neon-http.md), [disabled cookie caching](../decisions/003-cookie-cache-disabled.md), [versioned migrations](../decisions/004-versioned-migrations.md), [HTTP-boundary background execution](../decisions/005-background-tasks.md) and the explicit route, helper and policy contracts below. Simplifying an implementation recipe does not reopen these decisions. ADR 001's future linking policy applies only when the optional extension is implemented.
 - **Technical proposals:** choices explicitly marked for evaluation remain open decisions. The [scope exclusions](#out-of-scope) apply throughout.
 
-Validation follows [testing scope](../testing.md#validation-scope). Tests accompany implementation; Phase 7 completes coverage and CI. Phase 9 owns real Preview/provider/serverless acceptance, without blocking Phase 4.3 or local acceptance of Phases 4–8. All applicable Preview gates precede production promotion; production smoke checks gate release acceptance.
+Validation follows [testing scope](../testing.md#validation-scope). Tests accompany implementation and Phase 7 completes coverage and CI. Phase 9 owns real Preview, provider and serverless acceptance. All applicable Preview gates precede production promotion, and production smoke checks gate release acceptance.
 
 <a id="phase-4"></a>
 
 ## Phase 4 — Email/password and server authorization
 
-### Goal
-
-Complete the server authorization/input contract on the existing credential verification and reset-session baseline. Account data and page access follow in Phase 5.
-
-### Preconditions
-
-- The existing auth factory, mounted handler, migrations and isolated HTTP/email fixtures provide the baseline described in the topic documents.
-- Credential verification/reset sessions and the session-only helper are implemented; the authorization/input contract remains in Phase 4.4.
-
-### Boundary acceptance
-
-- [ ] Preserve native Better Auth email/password configuration, the `sendEmail` boundary and provider-owned email settings, without a provider registry or mirrored feature state.
-- [ ] Verify the identity/session/authorization model using email/password, with no credentials or modules for optional authentication methods required.
-
-### 1. Email transport — implemented
-
-The provider-specific Resend transport and local console delivery are documented in [authentication](../authentication.md#isolated-email-transport) and [testing](../testing.md#email-transport-coverage).
-
-### 2. Verification/recovery callbacks and background execution — implemented
-
-Native callbacks, runtime email initialization and direct Nitro background registration are documented in [authentication](../authentication.md#verification-and-recovery-delivery), [deployment](../deployment.md#background-tasks) and [ADR 005](../decisions/005-background-tasks.md). Real inbox receipt and deployed Resend/`waitUntil` behavior remain mandatory Phase 9 checks; implementation and fixtures do not establish those guarantees.
-
-### 3. Credential verification and reset sessions — implemented
-
-[Authentication](../authentication.md) owns native credential verification, explicit sign-in after verification, reset-session revocation and `requireSession()`. The helper checks session validity only and returns the actual `emailVerified`; verification is not a global resource requirement. [Testing](../testing.md#http-coverage) describes captured-link and session coverage.
-
-### 4. Define custom endpoint authorization and input contracts.
-
-- [ ] Define Phase 5's read-only `GET /api/account`: current user only, no caller-supplied user selector, minimal user projection, 401 for absent identity and 400 for invalid custom input. Any additional resource authorization must be explicit; do not impose a global email-verification gate. Do not introduce speculative resource CRUD or public test endpoints.
-- [ ] Validate custom body/query input server-side with Zod and allowlist writable properties. Browser-supplied user IDs, verification flags, roles or ownership never establish authority.
-- [ ] Preserve Better Auth's native validation, response contracts and origin/CSRF protection. Phase 6 profile editing uses native `updateUser` with narrow supported server validation, not an auth proxy; any future custom mutation needs its own verified protection.
+The [credential baseline](../authentication.md) and [authorization and input contract](../authentication.md#custom-endpoint-authorization-and-input) define the starting point for Phase 5. [Phase 9](#phase-9) covers real email delivery and serverless acceptance.
 
 <a id="phase-5"></a>
 
@@ -63,10 +33,8 @@ Connect Better Auth's authoritative session to Nuxt SSR and navigation, with ser
 
 ### 1. Protect the current-account endpoint.
 
-- [ ] Add `server/api/account.get.ts` using `require-session.ts`. Derive the current user exclusively from the Better Auth-validated session and reject unsupported selector query input with 400.
-- [ ] Return only the intended `{ user: { id, name, email, emailVerified } }` projection. Exclude raw sessions, credentials, account records, tokens, password hashes, IP addresses and user agents.
-- [ ] Apply `Cache-Control: private, no-store` on success and errors, outside cached handlers and shared SWR/ISR rules.
-- [ ] Prove anonymous 401, valid sessions with either email-verification value, own-account success and rejection of cross-user selection/forged headers over real HTTP, independently of page middleware.
+- [ ] Add `server/api/account.get.ts` using `requireSession(event)` and implement the [current-account endpoint contract](../authentication.md#current-account-endpoint-contract).
+- [ ] Verify the response projection, errors, cache headers and identity isolation over real HTTP. Cover valid sessions with either email-verification value, missing and revoked sessions, and forged identity headers with and without a valid session. Include repeated query parameters and names the parsed query helper drops. Exercise the endpoint independently of page middleware.
 
 ### 2. Integrate the single authoritative auth client.
 
@@ -128,7 +96,7 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 ### 3. Add the protected account screen, display-name editing and sign-out.
 
 - [ ] Complete `/account` with SSR current-user data, name/email/verification display and navigation from `AppHeader.vue`.
-- [ ] Editing is display-name only; email stays read-only. Preserve the native `updateUser` operation and enforce the chosen name rule server-side through a supported narrow Better Auth extension point, without a profile proxy.
+- [ ] Implement the [profile edit contract](../authentication.md#profile-edits-through-better-auth) through native `updateUser` and enforce the chosen display-name rule server-side.
 - [ ] Refresh displayed session/account data only after confirmed success; preserve unsaved input on failure. Forged user selectors or verification fields cannot change another user's data or authority.
 - [ ] Use Phase 5 sign-out behavior. Email changes, deletion, uploads and linked-provider management remain outside scope.
 
@@ -333,7 +301,7 @@ Make setup reproducible from a clean clone, finish canonical documentation and r
 
 ## Dependency chain
 
-Implemented foundation (Phases 1–3, 4.1–4.3) → endpoint authorization/input contract (4.4) → client sessions/page access (5) → email/password/account UI (6) → coverage/CI (7) → security controls/runbook (8) → final Preview acceptance and production release (9) → reproducibility/cleanup (10).
+Foundation and server authorization contract (Phases 1–4) → client sessions/page access (5) → email/password/account UI (6) → coverage/CI (7) → security controls/runbook (8) → final Preview acceptance and production release (9) → reproducibility/cleanup (10).
 
 Preview provisioning/provider acceptance may begin before Phase 8 is complete. Phase 8 prepares controls/runbooks; Phase 9 accepts them in the deployed environment. Phase 10 may share Phase 9's clean-checkout deployment evidence.
 

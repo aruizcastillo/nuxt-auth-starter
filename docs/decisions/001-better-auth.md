@@ -18,4 +18,4 @@ Email/password requires verified email through its native method option. Any fut
 
 ## Consequences
 
-Neon supplies persistence, not a second auth authority: Neon Auth and its application configuration/deployment layer are unused. A client session store or auth proxy requires a demonstrated requirement. See [current authentication](../authentication.md) for implementation details and the [roadmap](../roadmap/roadmap.md#phase-4) for remaining work.
+Neon supplies persistence, not a second auth authority: Neon Auth and its application configuration/deployment layer are unused. A client session store or auth proxy requires a demonstrated requirement. See [authentication](../authentication.md) for implementation details and [Phase 5](../roadmap/roadmap.md#phase-5) for account API and session work.

@@ -164,7 +164,7 @@ The current Neon implementation uses the HTTP driver for stateless, serverless-f
 
 Better Auth is exposed at `/api/auth` and stores users, sessions, accounts and verification records in PostgreSQL. Follow the environment and database setup above.
 
-See [authentication](docs/authentication.md) for credential verification, reset-session revocation and the session helper, [Phase 4](docs/roadmap/roadmap.md#phase-4) for pending endpoint authorization/input work, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real email/deployment acceptance.
+See [authentication](docs/authentication.md) for credential verification, reset-session revocation and the session helper, [Phase 5](docs/roadmap/roadmap.md#phase-5) for the planned account API and client sessions, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real email/deployment acceptance.
 
 ## Development commands
 

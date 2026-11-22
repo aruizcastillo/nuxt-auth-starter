@@ -20,7 +20,30 @@ Recovery also uses the native callback and link. A successful reset consumes its
 
 `server/utils/require-session.ts` exports `requireSession(event)`. It reads Better Auth's session using the request headers and returns only `{ id, name, email, emailVerified }`. A missing/expired session raises HTTP 401 with `data.code: UNAUTHENTICATED`. Lookup errors propagate as server errors.
 
-The helper does not infer an authentication method or require `emailVerified`. It preserves that field's actual value. Email/password verification is enforced by Better Auth during credential sign-in. Any stricter resource authorization must be explicit. A client redirect or caller-supplied identity header is never an authorization source. No account API or client auth state is implemented yet.
+The helper checks session validity and preserves the actual `emailVerified` value. Better Auth enforces verification during credential sign-in. Resource-specific requirements belong to the server handler that owns the resource.
+
+## Custom endpoint authorization and input
+
+Derive identity from the Better Auth session on the server. Apply any resource-specific ownership, role or verification requirement using authoritative server data. Page middleware controls navigation. Client-supplied user IDs, identity headers, roles, ownership claims and verification flags carry no authority.
+
+Validate custom query parameters and bodies with Zod at the handler boundary. Define the accepted fields explicitly, reject unexpected fields and pass only validated writable properties to persistence. A custom mutation must enforce its own origin and CSRF protections. Better Auth owns validation, trusted-origin checks, CSRF protection and response contracts for its native endpoints.
+
+### Current-account endpoint contract
+
+[Phase 5](roadmap/roadmap.md#phase-5) implements the read-only `GET /api/account` for the current user. The route sets `Cache-Control: private, no-store` before session lookup or query validation so it applies to success and errors. Keep the route outside prerendering, cached handlers and shared SWR or ISR rules.
+
+| Result | Condition |
+| --- | --- |
+| `200` | A valid session and an empty query. Return exactly `{ user: { id, name, email, emailVerified } }` from `requireSession(event)`. A valid session grants access with either value of `emailVerified`. |
+| `401` with `data.code: UNAUTHENTICATED` | Better Auth finds no valid session. This takes precedence over input validation. |
+| `400` | A valid session and at least one query parameter. Use a generic validation error and keep submitted values out of the response. |
+| `5xx` | Session lookup fails. Use the server error path with sanitized response details. |
+
+Use `z.literal(0)` to validate `event.url.searchParams.size`. Nuxt 4.6.1's parsed query helper filters certain parameter names, so validating its result against an empty object would miss some inputs.
+
+### Profile edits through Better Auth
+
+[Phase 6](roadmap/roadmap.md#phase-6) uses native `updateUser` for display-name edits. Scope a Better Auth [before hook](https://better-auth.com/docs/concepts/hooks#before-hooks) to `/update-user` and validate a body containing only `name`. The native endpoint also accepts `image`, so enforce the field allowlist on the server. Use Better Auth's `APIError` for validation failures and preserve the native session and origin checks and success response. The name constraints are part of the Phase 6 form contract.
 
 ## Configuration and initialization
 

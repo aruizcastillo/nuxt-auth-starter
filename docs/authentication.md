@@ -4,7 +4,7 @@
 
 `server/auth/options.ts` is the typed Better Auth factory. It accepts parsed auth settings, the existing Drizzle client and an optional `SendEmail` function. The CLI omits the function and needs no email or Nitro initialization. Runtime assembly creates auth per request and supplies a function that registers delivery with that request's `event.waitUntil`. The catch-all forwards `event.req` to the native handler.
 
-Better Auth and its adapter resolve to **1.7.9**. The adapter uses `@better-auth/drizzle-adapter/relations-v2`, PostgreSQL, explicit table mapping and `transaction: false` for the reference Neon HTTP driver's capabilities. See [database](database.md#runtime-integration) and [ADR 002](decisions/002-neon-http.md). Sessions are database-authoritative and cookie caching is disabled ([ADR 003](decisions/003-cookie-cache-disabled.md)).
+Better Auth, its Drizzle adapter and the schema CLI resolve to **1.7.27**. The adapter uses `@better-auth/drizzle-adapter/relations-v2`, PostgreSQL, explicit table mapping and `transaction: false` for the reference Neon HTTP driver's capabilities. See [database](database.md#runtime-integration) and [ADR 002](decisions/002-neon-http.md). Sessions are database-authoritative and cookie caching is disabled ([ADR 003](decisions/003-cookie-cache-disabled.md)).
 
 ## Credential and verification policy
 
@@ -30,7 +30,7 @@ Validate custom query parameters and bodies with Zod at the handler boundary. De
 
 ### Current-account endpoint contract
 
-[Phase 5](roadmap/roadmap.md#phase-5) implements the read-only `GET /api/account` for the current user. The route sets `Cache-Control: private, no-store` before session lookup or query validation so it applies to success and errors. Keep the route outside prerendering, cached handlers and shared SWR or ISR rules.
+`GET /api/account` exposes a read-only projection of the current user. The route sets `Cache-Control: private, no-store` before session lookup or query validation so it applies to success and errors. Keep the route outside prerendering, cached handlers and shared SWR or ISR rules.
 
 | Result | Condition |
 | --- | --- |
@@ -40,6 +40,16 @@ Validate custom query parameters and bodies with Zod at the handler boundary. De
 | `5xx` | Session lookup fails. Use the server error path with sanitized response details. |
 
 Use `z.literal(0)` to validate `event.url.searchParams.size`. Nuxt 4.6.1's parsed query helper filters certain parameter names, so validating its result against an empty object would miss some inputs.
+
+### Session-aware navigation
+
+The same-origin Vue client uses Better Auth's [`useSession(useFetch)` integration](https://better-auth.com/docs/integrations/nuxt#use-the-session). Better Auth 1.7.27 resolves the session path relative to the app when `baseURL` is inferred. Nuxt forwards the incoming request on SSR and reuses the navigation result during hydration. The fetch keeps Better Auth's signal, uses an explicit Nuxt key for invalidation and serializes only whether a session resolved. The account page fetches its display data separately through `/api/account`.
+
+The `auth` middleware protects `/account`. The `guest` middleware redirects authenticated users away from `/sign-in` and `/register`. Both set private, no-store headers on server-rendered responses and redirects. A session lookup failure surfaces a retryable error. Verification and password recovery pages remain reachable regardless of session state.
+
+The optional `redirect` query accepts a single local destination. `safeRedirect()` allows `/` and `/account`, preserves valid query strings and fragments, and otherwise defaults to `/account`. Credential forms use that same contract when implemented in [Phase 6](roadmap/roadmap.md#phase-6).
+
+The account view subscribes to Better Auth's native Vue session observer in the browser. This activates the library's focus and cross-tab listeners. An observed revocation or an account `401` clears the account and navigation data before returning to sign-in, where the native session check resolves current access. Successful native sign-out also clears the view. An error returned to the browser leaves the current account view available for a retry. Better Auth can clear the browser cookie after logging a database deletion failure, so verify database revocation by testing the previous session against the protected endpoint.
 
 ### Profile edits through Better Auth
 
@@ -64,7 +74,7 @@ The development transport writes the recipient, purpose and plain-text message w
 
 The email service waits for the provider's result and propagates failures. Only the request integration registers its promise with `event.waitUntil`, observes rejection and returns without waiting for provider acceptance. Registration occurs before transport I/O. A registration failure prevents the send, logs a sanitized event and throws a sanitized integration error. There is no auth preflight hook, sender-preparation cache, execution provider or `advanced.backgroundTasks.handler`.
 
-Better Auth 1.7.9's `runInBackgroundOrAwait` catches callback failures during registration and recovery; explicit verification resend awaits the callback directly and may expose a registration failure as an HTTP error. Anonymous resend retains its native 500 ms floor. There is no uniform preflight HTTP 503. Provider failures inside the registered task do not change the HTTP acknowledgement. See the matching [context](https://github.com/better-auth/better-auth/blob/v1.7.9/packages/better-auth/src/context/create-context.ts) and [resend source](https://github.com/better-auth/better-auth/blob/v1.7.9/packages/better-auth/src/api/routes/email-verification.ts).
+Better Auth's `runInBackgroundOrAwait` catches callback failures during registration and recovery. Explicit verification resend awaits the callback directly and may expose a registration failure as an HTTP error. Anonymous resend retains its native 500 ms floor. Provider failures inside the registered task leave the HTTP acknowledgement intact. See the matching [context](https://github.com/better-auth/better-auth/blob/v1.7.27/packages/better-auth/src/context/create-context.ts) and [resend source](https://github.com/better-auth/better-auth/blob/v1.7.27/packages/better-auth/src/api/routes/email-verification.ts).
 
 Provider delivery emits `auth_email_requested`, `auth_email_accepted` and `auth_email_failed` with a random `deliveryId` and fixed purpose. Acceptance includes `providerMessageId`. Failures contain a sanitized local code. The request integration also reports `background_registration` or `sender_not_initialized`. These structured events exclude recipients, message contents, links, tokens and credentials.
 
@@ -81,7 +91,7 @@ The transport uses native `fetch`, rejects redirects, never automatically retrie
 The reference runtime uses email/password only. Methods can be combined or replaced deliberately through Better Auth's native options, without environment-derived feature flags or registries. Google OAuth and account linking are an [optional future extension](roadmap/roadmap.md#planned-future-work); no Google module, credentials or validated integration are included.
 
 - **Credentials only:** keep the reference composition and configure its email transport.
-- **Replace credentials in a derived project:** review the entire native method configuration, including recovery and verification callbacks. In 1.7.9, `emailAndPassword.enabled: false` alone does not disable recovery when `sendResetPassword` remains. Preserve the actual `emailVerified` value and keep method policy separate from resource authorization.
+- **Replace credentials in a derived project:** review the entire native method configuration, including recovery and verification callbacks. In 1.7.27, password recovery remains active when `sendResetPassword` is configured and `emailAndPassword.enabled` is false. Preserve the actual `emailVerified` value and keep method policy separate from resource authorization.
 - **Remove unused mail:** remove the startup plugin, runtime sender and scheduling composition, email-module imports/types, provider files and unused `runtimeConfig` keys/environment values. Adjust setup documentation and email fixtures/tests. Preserve session lookup and the native auth handler.
 - **Replace Resend:** implement the replacement provider's configuration check, sender and sanitized error mapping. Wire that provider in `server/email/index.ts` and update the runtime setting declarations, setup and provider fixtures. The shared development console behavior applies when the replacement provider's settings are absent or empty.
 

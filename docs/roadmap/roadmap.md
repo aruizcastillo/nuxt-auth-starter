@@ -22,50 +22,7 @@ The [credential baseline](../authentication.md) and [authorization and input con
 
 ## Phase 5 — Client sessions and page access
 
-### Goal
-
-Connect Better Auth's authoritative session to Nuxt SSR and navigation, with server-protected current-account data and safe redirects.
-
-### Preconditions
-
-- Phase 4's server policies and integration checks pass.
-- Preserve `no_prefix` locale routing and the route contract: `/sign-in`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` and `/account`. Full screens belong to Phase 6.
-
-### 1. Protect the current-account endpoint.
-
-- [ ] Add `server/api/account.get.ts` using `requireSession(event)` and implement the [current-account endpoint contract](../authentication.md#current-account-endpoint-contract).
-- [ ] Verify the response projection, errors, cache headers and identity isolation over real HTTP. Cover valid sessions with either email-verification value, missing and revoked sessions, and forged identity headers with and without a valid session. Include repeated query parameters and names the parsed query helper drops. Exercise the endpoint independently of page middleware.
-
-### 2. Integrate the single authoritative auth client.
-
-- [ ] Add `app/lib/auth-client.ts` with the native Better Auth Vue client and same-origin endpoint. Use it directly for auth actions, with no runtime server imports or exposed secrets.
-- [ ] Keep Better Auth as the only session authority, with supported inferred types. Account-page data and mutation pending state do not become a second session store, custom session proxy or manually synchronized identity.
-
-### 3. Resolve sessions across SSR, hydration and navigation.
-
-- [ ] Use the selected Better Auth/Nuxt SSR integration, `authClient.useSession(useFetch)`, preserving its session signal and hydration reuse.
-- [ ] Load `/api/account` through Nuxt's SSR-safe request/data primitives. Session-dependent HTML must respect the incoming request without manual cookie forwarding or client-only workarounds.
-- [ ] Verify authenticated/guest refresh, revoked sessions and concurrent independent users: no hydration mismatch, protected-content flash or cross-request payload leakage. Runtime/HTTP coverage accompanies implementation; real browser coverage is completed in Phase 7.
-
-### 4. Apply authenticated-page and guest-page navigation rules.
-
-- [ ] Add named `app/middleware/auth.ts` and `app/middleware/guest.ts`, with minimal route shells as needed. `/account` requires auth; sign-in/register use guest rules.
-- [ ] Send guests to sign-in with a safe return destination and authenticated users away from guest forms to the safe destination or `/account`.
-- [ ] Await session resolution and distinguish transient lookup errors from guests. Return redirects correctly; provide retryable error behavior without redirect loops.
-- [ ] Keep verification/reset landing routes reachable with an existing session and leave native `/api/auth` endpoints outside page redirect rules. Middleware controls navigation UX; server authorization remains mandatory.
-
-### 5. Preserve safe return destinations.
-
-- [ ] Add the pure `shared/utils/safe-redirect.ts` helper. Accept a single local destination, preserve its safe query/hash and allow only application destinations (initially `/account` and `/`), falling back to `/account`.
-- [ ] Reject ambiguous/multiple values, external or protocol-relative URLs, schemes, backslashes, control characters and encoded normalization attacks. Reject auth-form routes, `/api/` and unsupported paths that could create loops.
-- [ ] Apply this contract to credential sign-in and registration return destinations. Carry it through verification only if safe; otherwise consistently use `/account`. Never navigate using a raw redirect query.
-- [ ] Cover accepted destinations and attack/loop cases in pure unit tests.
-
-### 6. Handle session loading, expiry and sign-out.
-
-- [ ] Distinguish pending/error states from resolved guests. On successful sign-out, use Better Auth's session invalidation, clear stale account-page data through Nuxt and navigate to sign-in; preserve identity and offer retry on failure.
-- [ ] Account 401 re-resolves authoritative identity and removes stale data; transient server failures remain distinct. Add resource-specific denial handling only for explicitly implemented authorization rules.
-- [ ] Verify expiry/revocation, sign-out from another tab, hard refresh and browser back behavior. Once revocation is observed, old account content must not remain visible.
+The [current-account endpoint](../authentication.md#current-account-endpoint-contract) and [session-aware navigation](../authentication.md#session-aware-navigation) provide the baseline for Phase 6. See [HTTP coverage](../testing.md#http-coverage) for the local acceptance boundary. Phase 7 adds automated browser coverage.
 
 <a id="phase-6"></a>
 
@@ -82,13 +39,14 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 
 ### 1. Build registration and credential sign-in.
 
-- [ ] Add `app/pages/register.vue` (name/email/password) and `app/pages/sign-in.vue` (email/password), using native Better Auth actions and the safe return contract.
+- [ ] Complete `app/pages/(auth)/register.vue` (name/email/password) and `app/pages/(auth)/sign-in.vue` (email/password), using native Better Auth actions and the [safe return contract](../authentication.md#session-aware-navigation).
 - [ ] Registration presents a generic check-email outcome consistent with the final server policy. Credential sign-in handles safe success destinations and native authentication errors.
+- [ ] Carry a validated return destination through verification when it can be preserved safely. Use `/account` as the fallback.
 - [ ] Provide working links between auth screens and home, semantic forms, appropriate autocomplete and no nested interactive elements or duplicate pending actions.
 
 ### 2. Build verification, resend and password recovery screens.
 
-- [ ] Add `app/pages/verify-email.vue`, `app/pages/forgot-password.vue` and `app/pages/reset-password.vue` using native verification/recovery flows. Better Auth owns token consumption; no custom verification endpoint is needed.
+- [ ] Complete `app/pages/(auth)/verify-email.vue`, `app/pages/(auth)/forgot-password.vue` and `app/pages/(auth)/reset-password.vue` using native verification and recovery flows. Better Auth owns token consumption.
 - [ ] Resend/recovery acknowledgements do not reveal whether an address exists or is already verified. Explain delivery uncertainty and offer usable retry paths without promising inbox receipt.
 - [ ] Validate link/query shape, handle missing/invalid/expired/used reset links and offer a fresh request. Reset success removes the sensitive token from the URL via replacement navigation and requires sign-in.
 - [ ] Keep these landing routes reachable with existing sessions. Never log or persist recovery/verification tokens in browser storage.

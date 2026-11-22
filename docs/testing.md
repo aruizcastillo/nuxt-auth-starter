@@ -26,13 +26,15 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 ## HTTP coverage
 
-`test/e2e/auth-server.test.ts` builds and starts Nitro against the explicitly allowlisted disposable database. Test-only email and session routes are configured solely by the suite. The email fixture plugin runs before the application's scanned startup plugin, so the initialized sender captures only intercepted provider fetch.
+`test/e2e/auth-server.test.ts` builds and starts Nitro against the explicitly allowlisted disposable database. The suite registers its own email fixture. The fixture plugin runs before the application's scanned startup plugin, so the initialized sender captures only intercepted provider fetch.
 
 Credential tests cover validation, bounds, native normalization/hash persistence, generic duplicate registration, cookie attributes, expiry and sign-out. Successful credential sessions follow captured native verification links; database flags are never used to bypass verification. Registration and verification create no session; sign-in before verification returns 403.
 
 The key Node lifecycle test blocks the transport, receives signup/resend HTTP acknowledgements with provider work still pending, then releases and observes acceptance. Recovery uses captured single-use links and checks all earlier sessions are revoked, the old password fails and new sign-in succeeds. Provider rejection and a real ten-second timeout preserve generic recovery responses and allow subsequent verification. Unit transport tests retain the other error classifications.
 
-The session fixture exposes only `requireSession()` for tests. It checks guest/expired 401, forged headers, exact user projection and a real unverified session created through an explicit alternative Better Auth configuration. That alternative is not installed in production. A unit check covers lookup-error propagation without converting a failure into a guest.
+The mounted `/api/account` tests cover guest, expired and revoked sessions, forged headers, exact user projection, invalid queries and private cache headers. The verification-policy regression uses a real unverified session created with a test-specific Better Auth configuration. A unit check covers lookup-error propagation.
+
+The SSR tests request the account page for two independent users and a guest concurrently, with a Vercel-style inferred URL present. They check private cache headers, session-token exclusion from the HTML, redirects and access to public verification and recovery routes. Unit tests cover the shared redirect policy.
 
 The separate development fixture boots real Nuxt without either provider setting. It registers an account, checks that sign-in is blocked before verification, then completes verification and password reset through the native links printed to the server's terminal. The e2e project runs files sequentially because development startup regenerates root `.nuxt` types while the production fixture compiles against them.
 

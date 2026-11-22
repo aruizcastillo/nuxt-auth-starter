@@ -8,7 +8,7 @@ Neon is the default PostgreSQL provider, but the database layer is structured so
 
 The current implementation includes the Better Auth server endpoint, auth schema, initial migration, and email verification and password recovery, using Resend as the reference email provider.
 
-The first version focuses on email/password, email verification, password recovery, sessions and server-side authorization. Sign-in and account pages, verification/recovery screens, protected application pages and the remaining authorization/security work are pending in the [roadmap](docs/roadmap/roadmap.md).
+The first version focuses on email/password, email verification, password recovery, sessions and server-side authorization. The starter includes session-aware navigation and a protected account page. Authentication forms, account editing and release validation are tracked in the [roadmap](docs/roadmap/roadmap.md).
 
 The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n.
 
@@ -164,7 +164,7 @@ The current Neon implementation uses the HTTP driver for stateless, serverless-f
 
 Better Auth is exposed at `/api/auth` and stores users, sessions, accounts and verification records in PostgreSQL. Follow the environment and database setup above.
 
-See [authentication](docs/authentication.md) for credential verification, reset-session revocation and the session helper, [Phase 5](docs/roadmap/roadmap.md#phase-5) for the planned account API and client sessions, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real email/deployment acceptance.
+See [authentication](docs/authentication.md) for credential verification, account access and session-aware navigation, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real email and deployment acceptance.
 
 ## Development commands
 

@@ -6,7 +6,22 @@
   },
   "home": { "greeting": "Hello Nuxt!" },
   "navigation": { "main": "Main navigation" },
-  "common": { "language": "Language", "style": "Style", "theme": "Theme" },
+  "common": { "language": "Language", "style": "Style", "theme": "Theme", "retry": "Try again" },
+  "auth": {
+    "signIn": "Sign in",
+    "register": "Create an account",
+    "verifyEmail": "Verify your email",
+    "forgotPassword": "Forgot your password?",
+    "resetPassword": "Reset your password"
+  },
+  "account": {
+    "title": "Your account",
+    "loading": "Loading your account…",
+    "loadError": "We couldn't load your account. Try again.",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signOutError": "We couldn't sign you out. Try again."
+  },
   "languages": { "en": "English", "es": "Spanish" },
   "theme": { "system": "System", "light": "Light", "dark": "Dark" }
 }

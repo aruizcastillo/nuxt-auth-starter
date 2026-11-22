@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { formatConfigError } from '../../utils/config-error'
+import { EmailDeliveryError, type EmailDeliveryErrorCode } from '../delivery-error'
 import type { Email } from '../index'
 
 const resendConfigSchema = z.object({
@@ -11,25 +12,25 @@ const resendConfigSchema = z.object({
   }),
 })
 
+const unconfiguredResendSchema = z.object({
+  resendApiKey: z.literal('').optional(),
+  emailFrom: z.literal('').optional(),
+})
+
+export function isResendUnconfigured(config: unknown) {
+  return unconfiguredResendSchema.safeParse(config).success
+}
+
 export function parseResendConfig(config: unknown) {
   const result = resendConfigSchema.safeParse(config)
   if (!result.success) throw new Error(formatConfigError(result.error))
   return result.data
 }
 
-export type ResendErrorCode = 'authentication' | 'rate_limit' | 'rejected' | 'provider' | 'timeout' | 'network' | 'invalid_response'
-
-export class ResendDeliveryError extends Error {
-  constructor(public readonly code: ResendErrorCode) {
-    super(`Email transport failed: ${code}`)
-    this.name = 'ResendDeliveryError'
-  }
-}
-
 const acceptedEmailSchema = z.object({ id: z.uuid() })
 const providerErrorSchema = z.object({ name: z.string(), message: z.string() })
 
-function classifyFailure(status: number, data: unknown): ResendErrorCode {
+function classifyFailure(status: number, data: unknown): EmailDeliveryErrorCode {
   const error = providerErrorSchema.safeParse(data)
   if (status === 401) return 'authentication'
   if (status === 429) return 'rate_limit'
@@ -66,16 +67,16 @@ export function createResendSender(config: unknown, fetcher: typeof fetch = fetc
       catch (error) {
         if (!(error instanceof SyntaxError)) throw error
       }
-      if (!response.ok) throw new ResendDeliveryError(classifyFailure(response.status, data))
+      if (!response.ok) throw new EmailDeliveryError(classifyFailure(response.status, data))
       const result = acceptedEmailSchema.safeParse(data)
-      if (!result.success) throw new ResendDeliveryError('invalid_response')
+      if (!result.success) throw new EmailDeliveryError('invalid_response')
       return result.data
     }
     catch (error) {
-      if (signal.aborted) throw new ResendDeliveryError('timeout')
-      if (error instanceof ResendDeliveryError) throw error
+      if (signal.aborted) throw new EmailDeliveryError('timeout')
+      if (error instanceof EmailDeliveryError) throw error
       // Never retain a cause, response, request, or provider message (including URLs/tokens).
-      throw new ResendDeliveryError('network')
+      throw new EmailDeliveryError('network')
     }
   }
 }

@@ -97,7 +97,7 @@ pnpm auth:secret
 
 The CLI generates a `BETTER_AUTH_SECRET` entry. Copy its value into `NUXT_BETTER_AUTH_SECRET` in your `.env` file.
 
-For the included Resend transport, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required when starting the production server. In Nuxt development, both may be empty to work without sending mail; partial or invalid settings fail initialization. Credentials stay enabled and require verification: registration without a transport can leave a pending account that cannot sign in. Auth schema tooling does not require email settings.
+Leave both email settings empty in local development to read verification and password-reset links in the server terminal. To send real email, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Both values are required when starting the production server. See [email configuration](docs/authentication.md#configuration-and-initialization) for validation and how to handle local links.
 
 Resend is the reference email provider. Other providers can be integrated by replacing the email transport and its configuration without changing Better Auth or background execution. See the [email transport boundary](docs/authentication.md#isolated-email-transport) for replacement details.
 

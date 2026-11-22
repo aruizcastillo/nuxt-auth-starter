@@ -1,6 +1,7 @@
 import { inspect } from 'node:util'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createResendSender, ResendDeliveryError } from '../../server/email/providers/resend'
+import { EmailDeliveryError } from '../../server/email/delivery-error'
+import { createResendSender } from '../../server/email/providers/resend'
 
 const config = { resendApiKey: 're_test-secret', emailFrom: 'Nuxt Auth Starter <onboarding@resend.dev>' }
 const email = { to: 'recipient@example.test', subject: 'Private subject', text: 'https://example.test/reset?token=private-token' }
@@ -68,7 +69,7 @@ describe('Resend transport', () => {
     const warn = vi.spyOn(console, 'warn')
     const errorLog = vi.spyOn(console, 'error')
     const error = await createResendSender(config, fetcher)(email).catch((error: unknown) => error)
-    expect(error).toBeInstanceOf(ResendDeliveryError)
+    expect(error).toBeInstanceOf(EmailDeliveryError)
     expect(error).toMatchObject({ code, message: `Email transport failed: ${code}` })
     expect(error).not.toHaveProperty('cause')
     for (const value of [config.resendApiKey, email.to, email.subject, email.text, sensitive]) {

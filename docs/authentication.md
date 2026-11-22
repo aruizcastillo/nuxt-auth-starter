@@ -26,15 +26,16 @@ The helper does not infer an authentication method or require `emailVerified`. I
 
 Auth owns validation of its secret and canonical origin; database and provider modules own their settings. Only sanitized variable-name error formatting is shared. HTTPS is required outside localhost development.
 
-A synchronous Nitro plugin initializes the reference email transport once per runtime, using effective `useRuntimeConfig()` values. Importing modules does not read configuration or create a sender. There is no network probe or per-request validation. Prerender skips email initialization; the build and auth CLI do not need production email credentials.
+A synchronous Nitro plugin initializes the email transport once per runtime from effective `useRuntimeConfig()` values. The email module selects the transport and the reference provider classifies and validates its own configuration. Prerender skips email initialization. The build and auth CLI do not need production email credentials.
 
 | Runtime | Email configuration |
 | --- | --- |
-| Nuxt development, both values exactly empty | Application starts without a transport; attempted sends fail observably. |
-| Development, partial or invalid settings | Initialization throws a sanitized configuration error. |
-| Production Node server | Both settings must be valid at initialization. |
+| Nuxt development, both provider settings absent or exactly empty | Print verification and reset messages to the local server terminal. |
+| Nuxt development, both provider settings valid | Send through the configured provider. |
+| Nuxt development, partial or invalid settings | Fail initialization with a sanitized configuration error. |
+| Production server, including Preview | Require valid provider settings at initialization. |
 
-Runtime callbacks remain configured even when development has no transport. A registration can therefore create an unverified account before the send fails; password sign-in remains blocked. Sessions and existing-link consumption need no new send. After adding email settings, restart the runtime to initialize the transport. This is availability of the configured integration, not automatic selection of auth methods.
+The development transport writes the recipient, purpose and plain-text message with its complete native link directly to the server's standard output. Use it in a local terminal and keep that output private. Open the printed link to complete the normal Better Auth verification or recovery flow. After changing provider settings, restart the runtime to initialize the transport.
 
 ### Verification and recovery delivery
 
@@ -42,13 +43,13 @@ The email service waits for the provider's result and propagates failures. Only 
 
 Better Auth 1.7.9's `runInBackgroundOrAwait` catches callback failures during registration and recovery; explicit verification resend awaits the callback directly and may expose a registration failure as an HTTP error. Anonymous resend retains its native 500 ms floor. There is no uniform preflight HTTP 503. Provider failures inside the registered task do not change the HTTP acknowledgement. See the matching [context](https://github.com/better-auth/better-auth/blob/v1.7.9/packages/better-auth/src/context/create-context.ts) and [resend source](https://github.com/better-auth/better-auth/blob/v1.7.9/packages/better-auth/src/api/routes/email-verification.ts).
 
-Own events are `auth_email_requested`, `auth_email_accepted` and `auth_email_failed`, with a random `deliveryId` and fixed purpose. Acceptance includes `providerMessageId`; failures contain a local code, including `not_configured` or `background_registration` at the runtime boundary. No recipient, subject, body, link, token or credentials are logged by these events.
+Provider delivery emits `auth_email_requested`, `auth_email_accepted` and `auth_email_failed` with a random `deliveryId` and fixed purpose. Acceptance includes `providerMessageId`. Failures contain a sanitized local code. The request integration also reports `background_registration` or `sender_not_initialized`. These structured events exclude recipients, message contents, links, tokens and credentials.
 
 An acknowledgement is not provider acceptance or inbox delivery. A validly configured provider can fail after account creation; retain the unverified account and request a new link later. Timeout/network failures can leave acceptance unknown, so retries could duplicate messages. Background execution removes provider latency from the response, not all database/timing differences. Preserve native generic responses and rate limits without promising timing equivalence. See [deployment](deployment.md#background-tasks) and [ADR 005](decisions/005-background-tasks.md).
 
 ### Isolated email transport
 
-`server/email/providers/resend.ts` owns Resend configuration, native-fetch HTTP transport and sanitized errors. It has no auth, Nitro, Vercel or environment imports. Configuration is checked by Zod before sending; `Email` is a TypeScript interface, not a second runtime input schema.
+`server/email/index.ts` composes the console transport with the selected provider. `server/email/providers/resend.ts` owns the Resend setting names, validation, native-fetch HTTP transport and mapping to sanitized delivery errors. It has no auth, Nitro, Vercel or environment imports. Zod validates the settings during initialization.
 
 The transport uses native `fetch`, rejects redirects, never automatically retries and keeps a ten-second `AbortSignal.timeout` deadline through body consumption. Native fetch is intentional: installed ofetch 1.5.1 clears its built-in timeout before reading the body. Success requires a UUID `id` and means provider acceptance. Error codes distinguish authentication, rate limiting, rejection, provider failure, timeout, network failure and invalid response. Raw provider messages and causes are discarded.
 
@@ -59,6 +60,6 @@ The reference runtime uses email/password only. Methods can be combined or repla
 - **Credentials only:** keep the reference composition and configure its email transport.
 - **Replace credentials in a derived project:** review the entire native method configuration, including recovery and verification callbacks. In 1.7.9, `emailAndPassword.enabled: false` alone does not disable recovery when `sendResetPassword` remains. Preserve the actual `emailVerified` value and keep method policy separate from resource authorization.
 - **Remove unused mail:** remove the startup plugin, runtime sender and scheduling composition, email-module imports/types, provider files and unused `runtimeConfig` keys/environment values. Adjust setup documentation and email fixtures/tests. Preserve session lookup and the native auth handler.
-- **Replace Resend:** replace the transport and provider-specific configuration/error mapping in the email module, then update environment settings, setup and transport fixtures/tests. Better Auth and HTTP scheduling do not change.
+- **Replace Resend:** implement the replacement provider's configuration check, sender and sanitized error mapping. Wire that provider in `server/email/index.ts` and update the runtime setting declarations, setup and provider fixtures. The shared development console behavior applies when the replacement provider's settings are absent or empty.
 
 These are explicit source changes for a derived project; no runtime capability detection is provided. [ADR 001](decisions/001-better-auth.md) owns the authentication boundary.

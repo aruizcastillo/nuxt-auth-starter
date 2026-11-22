@@ -22,7 +22,7 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 `test/unit/resend.test.ts` exercises the isolated Resend sender with an injected fetch function and native `Response` objects. It covers acceptance and payload shape, configurable sender, malformed JSON and success schemas, key/permission errors, sender rejection, HTTP 429, provider failures, network errors, sanitized exceptions and absence of automatic retries/logging. Two tests exercise the real ten-second abort deadline while waiting for headers or consuming a stalled body. No emails are sent and no Resend credentials or database are needed for these tests. Run `pnpm test:run --project unit`.
 
-`test/unit/email.test.ts` checks that the email service waits for acceptance and propagates sanitized failures. Runtime unit cases supply only configuration and provider fetch: they check initialization without I/O, shared transport across requests, missing development settings, strict configuration failures, per-event registration, rejection observation and registration failure without detached I/O. Mounted HTTP tests remain authoritative for Nitro lifecycle and real sessions.
+`test/unit/email.test.ts` checks transport selection, including missing and empty development settings, strict configuration validation, sanitized events and provider failures. Runtime unit cases cover shared transport across requests, per-event registration for console and provider delivery, rejection observation and registration failure without detached I/O. Mounted HTTP tests exercise Nitro lifecycle and real sessions.
 
 ## HTTP coverage
 
@@ -34,7 +34,7 @@ The key Node lifecycle test blocks the transport, receives signup/resend HTTP ac
 
 The session fixture exposes only `requireSession()` for tests. It checks guest/expired 401, forged headers, exact user projection and a real unverified session created through an explicit alternative Better Auth configuration. That alternative is not installed in production. A unit check covers lookup-error propagation without converting a failure into a guest.
 
-The separate development fixture boots real Nuxt without either email setting, verifies that registration can persist an unverified account with no session, checks the observed unavailable-send event and confirms password sign-in stays blocked. The e2e project runs files sequentially: development startup regenerates root `.nuxt` types while the production fixture compiles against them, so parallel execution can lose tsconfig files.
+The separate development fixture boots real Nuxt without either provider setting. It registers an account, checks that sign-in is blocked before verification, then completes verification and password reset through the native links printed to the server's terminal. The e2e project runs files sequentially because development startup regenerates root `.nuxt` types while the production fixture compiles against them.
 
 Native production rate limiting stays enabled. The POST helper honors its actual retry header once and fails if rejected again. Longer email-case deadlines allow that backoff; they do not relax assertions. Cold Windows builds retain the ten-minute setup allowance.
 

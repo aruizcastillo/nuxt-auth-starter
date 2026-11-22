@@ -32,7 +32,7 @@ Complete the server authorization/input contract on the existing credential veri
 
 ### 1. Email transport — implemented
 
-The isolated Resend transport and its deterministic coverage are documented in [authentication](../authentication.md#isolated-email-transport) and [testing](../testing.md#email-transport-coverage). No transport implementation work remains here.
+The provider-specific Resend transport and local console delivery are documented in [authentication](../authentication.md#isolated-email-transport) and [testing](../testing.md#email-transport-coverage).
 
 ### 2. Verification/recovery callbacks and background execution — implemented
 

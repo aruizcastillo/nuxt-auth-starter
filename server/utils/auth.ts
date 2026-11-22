@@ -9,10 +9,7 @@ let emailSender: SendEmail | undefined
 
 // Called once by the Nitro startup plugin, never while importing this module.
 export function initializeAuthEmail(development = import.meta.dev) {
-  const config = useRuntimeConfig()
-  emailSender = development && config.resendApiKey === '' && config.emailFrom === ''
-    ? undefined
-    : createEmailSender(config)
+  emailSender = createEmailSender(useRuntimeConfig(), development)
 }
 
 export function useServerAuth(event: RequestEvent) {
@@ -25,11 +22,11 @@ export function useServerAuth(event: RequestEvent) {
     const task = Promise.resolve().then(async () => {
       if (!registered) return
       if (!emailSender) {
-        console.error('auth_email_failed', { purpose, deliveryId: crypto.randomUUID(), code: 'not_configured' })
-        throw new Error('Email transport is not configured')
+        console.error('auth_email_failed', { purpose, deliveryId: crypto.randomUUID(), code: 'sender_not_initialized' })
+        throw new Error('Email transport was not initialized')
       }
       await emailSender(email, purpose)
-    }).catch(() => {}) // The sender (or unavailable branch) already logged a sanitized failure.
+    }).catch(() => {}) // A failed send has already been reported.
     try {
       if (!('waitUntil' in event) || typeof event.waitUntil !== 'function') throw new Error('Missing waitUntil')
       event.waitUntil(task)

@@ -1,5 +1,10 @@
 {
-  "app": { "name": "Nuxt Starter" },
+  "app": {
+    "name": "Nuxt Starter",
+    "title": "Nuxt Starter",
+    "description": "An opinionated Nuxt starter."
+  },
+  "home": { "greeting": "Hello Nuxt!" },
   "navigation": { "main": "Main navigation" },
   "common": { "language": "Language", "style": "Style", "theme": "Theme" },
   "languages": { "en": "English", "es": "Spanish" },

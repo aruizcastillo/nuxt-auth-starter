@@ -10,11 +10,11 @@ The current implementation includes the Better Auth server endpoint, auth schema
 
 The first version focuses on email/password, email verification, password recovery, sessions and server-side authorization. Sign-in and account pages, verification/recovery screens, protected application pages and the remaining authorization/security work are pending in the [roadmap](docs/roadmap/roadmap.md).
 
-The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n. English and Spanish are currently configured.
+The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n.
 
 ## Requirements
 
-- Node.js 24
+- Node.js 24.15 or newer
 - pnpm 12
 - PostgreSQL
 

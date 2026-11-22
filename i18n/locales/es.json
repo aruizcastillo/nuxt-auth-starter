@@ -1,5 +1,10 @@
 {
-  "app": { "name": "Nuxt Starter" },
+  "app": {
+    "name": "Nuxt Starter",
+    "title": "Plantilla de Nuxt",
+    "description": "Una plantilla de Nuxt con convenciones predefinidas."
+  },
+  "home": { "greeting": "¡Hola, Nuxt!" },
   "navigation": { "main": "Navegación principal" },
   "common": { "language": "Idioma", "style": "Estilo", "theme": "Tema" },
   "languages": { "en": "Inglés", "es": "Español" },

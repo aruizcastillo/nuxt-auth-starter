@@ -147,10 +147,10 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 
 ### 6. Localize and verify accessibility.
 
-- [ ] Maintain equivalent English/Spanish auth, account, navigation and error messages. Preserve `no_prefix`, the `i18n_redirected` cookie and root-only browser-language detection.
+- [ ] Maintain equivalent auth, account, navigation and error messages across configured locales. Preserve the [locale selection policy](../i18n.md#locale-selection) on direct entries to the auth and account pages.
 - [ ] Language changes update visible errors without losing form values; SSR language agrees with hydration and no translated state leaks between requests.
 - [ ] Provide associated labels/descriptions/errors, accessible submit status, visible focus and first-invalid-field focus. Inline errors remain usable without toasts; preserve primitive keyboard/focus behavior.
-- [ ] Verify keyboard submission/tab order, menu dismissal/focus return, autofill/password managers and narrow viewports in both languages; fix discovered usability/accessibility failures.
+- [ ] Verify keyboard submission and tab order, menu dismissal and focus return, autofill and password managers, and narrow viewports in each configured locale. Fix discovered usability and accessibility failures.
 
 ### Cross-flow acceptance
 
@@ -179,7 +179,7 @@ Close remaining coverage gaps, add browser tests, automate migration reproducibi
 
 - [ ] Add compatible Playwright tooling with one supported Nuxt integration, the planned `test:browser` command and `test/browser/` cases. Happy-dom does not establish browser hydration or accessibility.
 - [ ] Run against a production-built server with isolated settings and reliable startup/teardown. Cover protected direct loads/refresh, sign-in/safe redirects, sign-out/back, cross-tab expiry/revocation and recovery links with an existing session.
-- [ ] Fail on hydration/page errors and private-data leakage across users or into guest HTML. Cover English/Spanish forms, labels, invalid-field focus and keyboard submission.
+- [ ] Fail on hydration/page errors and private-data leakage across users or into guest HTML. Cover forms, labels, invalid-field focus and keyboard submission in each configured locale.
 - [ ] Keep browser traces and failure artifacts free of credentials/tokens and apply short retention.
 
 ### 3. Automate empty-database migration and drift checks.
@@ -363,7 +363,9 @@ This planned extension is outside the mandatory scope of the first version. It d
 ## Planned maintenance
 
 - [ ] Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 is stable and dependency/deployment compatibility is verified; see [Build performance on Windows](../../README.md#build-performance-on-windows).
-- [ ] During that migration, review server APIs and background execution, including whether a subsequently introduced serverless bridge can be removed ([ADR 005](../decisions/005-background-tasks.md)). Preserve the runtime configuration policy, lifecycle and sanitized-failure guarantees; revalidate affected deployed behavior.
+- [ ] Update the email startup plugin for the target Nitro plugin API. Preserve one-time initialization, prerender behavior and runtime configuration validation. Keep HTTP handlers on the portable `nuxt/server` APIs. See the [Nuxt upgrade guide](https://nuxt.com/docs/5.x/getting-started/upgrade#migration-to-nitro-v3).
+- [ ] Verify the chosen versions of i18n and Nuxt Test Utils in development and with the built server. The current i18n integration imports Nitro 2 and h3 v1 APIs, so verify its behavior with the chosen module version or Nuxt's module compatibility layer. Run the [HTTP suite](../testing.md#http-coverage) for the mounted Better Auth and Drizzle/Neon boundaries. Verify [locale selection](../i18n.md#locale-selection) and hydration in a browser.
+- [ ] Recheck the generated Vercel function runtime and background execution using the [Preview lifecycle test](../deployment.md#background-tasks). Preserve the [ADR 005](../decisions/005-background-tasks.md) guarantees and review the semantics of any cache, header or redirect route rules in use when migrating.
 
 ## Out of scope
 

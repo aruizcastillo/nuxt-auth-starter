@@ -11,11 +11,6 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
-      title: 'Nuxt Starter',
-      meta: [
-        { name: 'description', content: 'An opinionated Nuxt starter.' },
-      ],
       link: [
         { rel: 'icon', href: '/favicon.ico' },
       ],
@@ -77,7 +72,6 @@ export default defineNuxtConfig({
     detectBrowserLanguage: {
       useCookie: true,
       cookieKey: 'i18n_redirected',
-      redirectOn: 'root',
     },
   },
 })

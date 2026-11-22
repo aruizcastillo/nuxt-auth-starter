@@ -1,4 +1,5 @@
 import { inspect } from 'node:util'
+import { stdout } from 'node:process'
 import type { RequestEvent } from 'nuxt/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initializeAuthEmail, useServerAuth } from '../../server/utils/auth'
@@ -85,21 +86,24 @@ describe('runtime email initialization and request registration', () => {
     else expect(initialize).not.toThrow()
   })
 
-  it('keeps callbacks and observes unavailable development delivery without disabling credentials', async () => {
+  it('keeps verification mandatory and registers console delivery in development', async () => {
     config.resendApiKey = ''
     config.emailFrom = ''
     const fetcher = vi.fn<typeof fetch>()
     vi.stubGlobal('fetch', fetcher)
+    const write = vi.spyOn(stdout, 'write').mockReturnValue(true)
     initializeAuthEmail(true)
     const event = requestEvent()
     const auth = useServerAuth(event)
     expect(auth.options.emailAndPassword).toMatchObject({ enabled: true, requireEmailVerification: true })
     await auth.options.emailVerification?.sendVerificationEmail?.(input)
     await expect(Promise.all(event.tasks)).resolves.toEqual([undefined])
+    expect(write).toHaveBeenCalledWith(`[auth-email:development] ${JSON.stringify({
+      purpose: 'verification', to: input.user.email, text: `Verify your email: ${input.url}`,
+    })}\n`)
     expect(fetcher).not.toHaveBeenCalled()
-    expect(console.error).toHaveBeenCalledExactlyOnceWith('auth_email_failed', {
-      purpose: 'verification', deliveryId: expect.any(String), code: 'not_configured',
-    })
+    expect(console.info).not.toHaveBeenCalled()
+    expect(console.error).not.toHaveBeenCalled()
   })
 
   it.each(['absent', 'throws'])('propagates %s registration without starting I/O', async (mode) => {

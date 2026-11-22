@@ -19,7 +19,7 @@ const origin = 'https://auth.example.test'
 const secret = randomBytes(32).toString('base64')
 const sessionResponse = z.object({
   user: z.object({ id: z.string(), name: z.string(), email: z.string(), emailVerified: z.boolean() }),
-  session: z.object({ id: z.string() }),
+  session: z.object({ id: z.string(), token: z.string() }),
 })
 
 await setup({
@@ -32,11 +32,11 @@ await setup({
       plugins: [fileURLToPath(new URL('../fixtures/email-plugin.ts', import.meta.url))],
       handlers: [
         { route: '/__test/email', method: 'post', handler: fileURLToPath(new URL('../fixtures/email-control.ts', import.meta.url)).replaceAll('\\', '/') },
-        { route: '/__test/session', method: 'get', handler: fileURLToPath(new URL('../fixtures/session.ts', import.meta.url)).replaceAll('\\', '/') },
       ],
     },
   },
   env: {
+    VERCEL_URL: 'preview.example.test',
     NUXT_DATABASE_URL: target.databaseUrl,
     NUXT_BETTER_AUTH_SECRET: secret,
     NUXT_BETTER_AUTH_URL: origin,
@@ -124,9 +124,12 @@ describe('mounted Better Auth server', () => {
   it('serves health, rejects guests and ignores forged identity headers', async () => {
     expect(await (await fetch('/api/auth/ok')).json()).toEqual({ ok: true })
     expect(await getSession()).toBeNull()
-    const denied = await fetch('/__test/session', { headers: { 'x-user-id': 'forged', 'x-email-verified': 'true' } })
-    expect(denied.status).toBe(401)
-    expect(await denied.json()).toMatchObject({ data: { code: 'UNAUTHENTICATED' } })
+    for (const path of ['/api/account', '/api/account?userId=forged']) {
+      const denied = await fetch(path, { headers: { 'x-user-id': 'forged', 'x-email-verified': 'true', 'accept': 'application/json' } })
+      expect(denied.status).toBe(401)
+      expect(denied.headers.get('cache-control')).toBe('private, no-store')
+      expect(await denied.json()).toMatchObject({ data: { code: 'UNAUTHENTICATED' } })
+    }
   })
 
   it('persists credentials, verifies by link, signs in and revokes sessions on sign-out', async () => {
@@ -142,8 +145,17 @@ describe('mounted Better Auth server', () => {
     if (!hash) throw new Error('Credential hash missing')
     expect(await verifyPassword({ hash, password: credentials.password })).toBe(true)
     expect(JSON.stringify(stored).includes(credentials.password)).toBe(false)
-    const projected = await fetch('/__test/session', { headers: { cookie } })
-    expect(await projected.json()).toEqual(active.user)
+    const projected = await fetch('/api/account', { headers: { cookie, 'x-user-id': 'forged', 'x-email-verified': 'false' } })
+    expect(projected.status).toBe(200)
+    expect(projected.headers.get('cache-control')).toBe('private, no-store')
+    expect(await projected.json()).toEqual({ user: active.user })
+
+    for (const query of ['?userId=another-user', '?x=1&x=2', '?__proto__=private-value', '?constructor=private-value']) {
+      const invalid = await fetch(`/api/account${query}`, { headers: { cookie, accept: 'application/json' } })
+      expect(invalid.status).toBe(400)
+      expect(invalid.headers.get('cache-control')).toBe('private, no-store')
+      expect((await invalid.text()).includes('private-value')).toBe(false)
+    }
 
     const invalid = await post('sign-in/email', { ...credentials, password: 'incorrect-password' })
     const unknown = await post('sign-in/email', { email: fixtures.credentials().email, password: 'incorrect-password' })
@@ -159,9 +171,60 @@ describe('mounted Better Auth server', () => {
       expect(await signout.json()).toEqual({ success: true })
       expect(signout.headers.getSetCookie().some(value => /session_token=;.*Max-Age=0/i.test(value))).toBe(true)
       expect(await getSession(stale)).toBeNull()
+      expect((await fetch('/api/account', { headers: { cookie: stale } })).status).toBe(401)
     }
     expect(await target.db.select().from(session).where(eq(session.userId, active.user.id))).toHaveLength(0)
   })
+
+  it('renders isolated SSR account pages and applies the route redirects', async () => {
+    const people = [fixtures.credentials(), fixtures.credentials()] as const
+    const [first, second] = people
+    const firstCookie = sessionCookie(await verifiedSignUp(first))
+    const secondCookie = sessionCookie(await verifiedSignUp(second))
+    const nativeSession = sessionResponse.parse(await getSession(firstCookie))
+    const page = (path: string, cookie: string) => fetch(path, {
+      redirect: 'manual',
+      headers: { cookie, accept: 'text/html' },
+    })
+
+    const [firstPage, secondPage, guest, guestSignIn] = await Promise.all([
+      page('/account', firstCookie),
+      page('/account', secondCookie),
+      page('/account?tab=profile', ''),
+      page('/sign-in', ''),
+    ])
+    for (const [response, current, other] of [[firstPage, first, second], [secondPage, second, first]] as const) {
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('private, no-store')
+      const html = await response.text()
+      expect(html.includes(current.email)).toBe(true)
+      expect(html.includes(other.email)).toBe(false)
+      expect(html.includes(nativeSession.session.token)).toBe(false)
+    }
+
+    expect(guest.status).toBe(302)
+    expect(guest.headers.get('cache-control')).toBe('private, no-store')
+    const destination = new URL(guest.headers.get('location') ?? '', origin)
+    expect(destination.pathname).toBe('/sign-in')
+    expect(destination.searchParams.get('redirect')).toBe('/account?tab=profile')
+    expect(guestSignIn.status).toBe(200)
+    expect(guestSignIn.headers.get('cache-control')).toBe('private, no-store')
+    const guestHTML = await guestSignIn.text()
+    expect(people.some(person => guestHTML.includes(person.email))).toBe(false)
+
+    for (const [path, redirectTo] of [
+      ['/sign-in?redirect=/', '/'],
+      ['/register?redirect=https://elsewhere.example/', '/account'],
+    ] as const) {
+      const redirect = await page(path, firstCookie)
+      expect(redirect.status).toBe(302)
+      expect(redirect.headers.get('location')).toBe(redirectTo)
+      expect(redirect.headers.get('cache-control')).toBe('private, no-store')
+    }
+    for (const path of ['/verify-email', '/forgot-password', '/reset-password']) {
+      expect((await page(path, firstCookie)).status).toBe(200)
+    }
+  }, 90_000)
 
   it.each(['name', 'email', 'password'] as const)('requires registration %s without creating an account', async (field) => {
     const credentials = fixtures.credentials()
@@ -216,7 +279,7 @@ describe('mounted Better Auth server', () => {
     const active = sessionResponse.parse(await getSession(cookie))
     await target.db.update(session).set({ expiresAt: new Date(Date.now() - 60000) }).where(eq(session.id, active.session.id))
     expect(await getSession(cookie)).toBeNull()
-    expect((await fetch('/__test/session', { headers: { cookie } })).status).toBe(401)
+    expect((await fetch('/api/account', { headers: { cookie } })).status).toBe(401)
   })
 })
 
@@ -355,8 +418,10 @@ describe('session authorization is independent of verification policy', () => {
     }))
     expect(response.status).toBe(200)
     const cookie = sessionCookie(response)
-    const projected = await fetch('/__test/session', { headers: { cookie } })
+    const projected = await fetch('/api/account', { headers: { cookie } })
     expect(projected.status).toBe(200)
-    expect(await projected.json()).toEqual({ id: expect.any(String), name: credentials.name, email: credentials.email, emailVerified: false })
+    expect(await projected.json()).toEqual({
+      user: { id: expect.any(String), name: credentials.name, email: credentials.email, emailVerified: false },
+    })
   })
 })

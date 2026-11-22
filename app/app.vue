@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import 'vue-sonner/style.css'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+
+useSeoMeta({
+  title: () => t('app.title'),
+  description: () => t('app.description'),
+})
 
 useHead(() => ({
   htmlAttrs: {

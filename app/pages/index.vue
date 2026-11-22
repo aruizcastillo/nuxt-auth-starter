@@ -4,7 +4,7 @@
     gap="sm"
   >
     <span>
-      Hello Nuxt!
+      {{ $t('home.greeting') }}
     </span>
   </UiPageContainer>
 </template>

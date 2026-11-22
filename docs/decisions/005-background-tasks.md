@@ -10,7 +10,7 @@ Authentication emails should not add provider latency to account-dependent respo
 
 Use Nitro 2's request `event.waitUntil` directly in the HTTP integration. Better Auth receives a generic sending callback; email and Resend remain independent of execution lifetime. Remove auth availability preflight, per-request sender preparation, preset selection and execution providers.
 
-Initialize the reference sender once through Nitro's synchronous startup lifecycle. Development may omit both email values and report failed attempts without disabling credentials. Production requires valid email settings. Email/password requires verification through native Better Auth options.
+Initialize the sender once through Nitro's synchronous startup lifecycle. The email module owns the choice between local console and provider delivery as described in [authentication](../authentication.md#configuration-and-initialization). Email/password requires verification through native Better Auth options.
 
 Node is the initial acceptance target. Serverless adaptation is a later, localized HTTP-boundary change, based on deployed evidence; do not claim that method presence provides platform support.
 

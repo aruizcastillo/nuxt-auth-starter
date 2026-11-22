@@ -20,6 +20,8 @@ The base acceptance target is `node-server`: a persistent Node process can finis
 
 Before accepting Vercel, use an isolated Preview and controlled mailbox: receive the HTTP acknowledgement while delivery remains pending, then confirm provider acceptance/receipt, usable environment-correct links and sanitized failure reporting. A fast successful send can finish before HTTP and does not prove lifecycle extension. Respect the remaining function duration, including auth/database work and the transport's ten-second deadline. See [Phase 9](roadmap/roadmap.md#phase-9).
 
+For the future Nitro upgrade, the [Nitro 3 release candidate](https://nitro.build/blog/v3-rc#vercel) reports Vercel Node support for `event.waitUntil` and runtime selection from `engines.node`. Verify the generated function runtime and repeat the Preview lifecycle test with the chosen stable release before relying on those defaults or removing any existing bridge.
+
 ## Environment isolation
 
 All `NUXT_*` settings are private runtime configuration. Local Nuxt dev/build/preview loads `.env`; standalone built output receives process environment variables. Vercel environment settings are authoritative for Development, Preview and Production, scoped separately with isolated database targets, independent auth secrets and the correct canonical HTTPS auth origin. Preview targets must not use production user data.

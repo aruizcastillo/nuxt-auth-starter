@@ -2,7 +2,7 @@
 
 This file describes remaining scope, dependencies and acceptance criteria. Current behavior lives in [authentication](../authentication.md), [database](../database.md), [testing](../testing.md) and [deployment](../deployment.md); setup lives in [README](../../README.md). Working instructions belong to [AGENTS.md](../../AGENTS.md).
 
-Phase numbers are retained for dependency references. Phases 1–3 and credential registration/sign-in/sign-out are represented by current documentation. Phase 4.1–4.3 are implemented for the Node baseline; their real-provider/deployment acceptance remains pending in Phase 9.
+Phase numbers are retained for dependency references.
 
 ## Scope and acceptance
 
@@ -10,94 +10,19 @@ Phase numbers are retained for dependency references. Phases 1–3 and credentia
 - **Agreed decisions:** preserve [Better Auth ownership](../decisions/001-better-auth.md), [Neon HTTP and transaction constraints](../decisions/002-neon-http.md), [disabled cookie caching](../decisions/003-cookie-cache-disabled.md), [versioned migrations](../decisions/004-versioned-migrations.md), [HTTP-boundary background execution](../decisions/005-background-tasks.md) and the explicit route, helper and policy contracts below. Simplifying an implementation recipe does not reopen these decisions. ADR 001's future linking policy applies only when the optional extension is implemented.
 - **Technical proposals:** choices explicitly marked for evaluation remain open decisions. The [scope exclusions](#out-of-scope) apply throughout.
 
-Validation follows [testing scope](../testing.md#validation-scope). Tests accompany implementation; Phase 7 completes coverage and CI. Phase 9 owns real Preview/provider/serverless acceptance, without blocking Phase 4.3 or local acceptance of Phases 4–8. All applicable Preview gates precede production promotion; production smoke checks gate release acceptance.
+Validation follows [testing scope](../testing.md#validation-scope). Tests accompany implementation and Phase 7 completes coverage and CI. Phase 9 owns real Preview, provider and serverless acceptance. All applicable Preview gates precede production promotion, and production smoke checks gate release acceptance.
 
 <a id="phase-4"></a>
 
 ## Phase 4 — Email/password and server authorization
 
-### Goal
-
-Complete the server authorization/input contract on the existing credential verification and reset-session baseline. Account data and page access follow in Phase 5.
-
-### Preconditions
-
-- The existing auth factory, mounted handler, migrations and isolated HTTP/email fixtures provide the baseline described in the topic documents.
-- Credential verification/reset sessions and the session-only helper are implemented; the authorization/input contract remains in Phase 4.4.
-
-### Boundary acceptance
-
-- [ ] Preserve native Better Auth email/password configuration, the `sendEmail` boundary and provider-owned email settings, without a provider registry or mirrored feature state.
-- [ ] Verify the identity/session/authorization model using email/password, with no credentials or modules for optional authentication methods required.
-
-### 1. Email transport — implemented
-
-The isolated Resend transport and its deterministic coverage are documented in [authentication](../authentication.md#isolated-email-transport) and [testing](../testing.md#email-transport-coverage). No transport implementation work remains here.
-
-### 2. Verification/recovery callbacks and background execution — implemented
-
-Native callbacks, runtime email initialization and direct Nitro background registration are documented in [authentication](../authentication.md#verification-and-recovery-delivery), [deployment](../deployment.md#background-tasks) and [ADR 005](../decisions/005-background-tasks.md). Real inbox receipt and deployed Resend/`waitUntil` behavior remain mandatory Phase 9 checks; implementation and fixtures do not establish those guarantees.
-
-### 3. Credential verification and reset sessions — implemented
-
-[Authentication](../authentication.md) owns native credential verification, explicit sign-in after verification, reset-session revocation and `requireSession()`. The helper checks session validity only and returns the actual `emailVerified`; verification is not a global resource requirement. [Testing](../testing.md#http-coverage) describes captured-link and session coverage.
-
-### 4. Define custom endpoint authorization and input contracts.
-
-- [ ] Define Phase 5's read-only `GET /api/account`: current user only, no caller-supplied user selector, minimal user projection, 401 for absent identity and 400 for invalid custom input. Any additional resource authorization must be explicit; do not impose a global email-verification gate. Do not introduce speculative resource CRUD or public test endpoints.
-- [ ] Validate custom body/query input server-side with Zod and allowlist writable properties. Browser-supplied user IDs, verification flags, roles or ownership never establish authority.
-- [ ] Preserve Better Auth's native validation, response contracts and origin/CSRF protection. Phase 6 profile editing uses native `updateUser` with narrow supported server validation, not an auth proxy; any future custom mutation needs its own verified protection.
+The [credential baseline](../authentication.md) and [authorization and input contract](../authentication.md#custom-endpoint-authorization-and-input) define the starting point for Phase 5. [Phase 9](#phase-9) covers real email delivery and serverless acceptance.
 
 <a id="phase-5"></a>
 
 ## Phase 5 — Client sessions and page access
 
-### Goal
-
-Connect Better Auth's authoritative session to Nuxt SSR and navigation, with server-protected current-account data and safe redirects.
-
-### Preconditions
-
-- Phase 4's server policies and integration checks pass.
-- Preserve `no_prefix` locale routing and the route contract: `/sign-in`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password` and `/account`. Full screens belong to Phase 6.
-
-### 1. Protect the current-account endpoint.
-
-- [ ] Add `server/api/account.get.ts` using `require-session.ts`. Derive the current user exclusively from the Better Auth-validated session and reject unsupported selector query input with 400.
-- [ ] Return only the intended `{ user: { id, name, email, emailVerified } }` projection. Exclude raw sessions, credentials, account records, tokens, password hashes, IP addresses and user agents.
-- [ ] Apply `Cache-Control: private, no-store` on success and errors, outside cached handlers and shared SWR/ISR rules.
-- [ ] Prove anonymous 401, valid sessions with either email-verification value, own-account success and rejection of cross-user selection/forged headers over real HTTP, independently of page middleware.
-
-### 2. Integrate the single authoritative auth client.
-
-- [ ] Add `app/lib/auth-client.ts` with the native Better Auth Vue client and same-origin endpoint. Use it directly for auth actions, with no runtime server imports or exposed secrets.
-- [ ] Keep Better Auth as the only session authority, with supported inferred types. Account-page data and mutation pending state do not become a second session store, custom session proxy or manually synchronized identity.
-
-### 3. Resolve sessions across SSR, hydration and navigation.
-
-- [ ] Use the selected Better Auth/Nuxt SSR integration, `authClient.useSession(useFetch)`, preserving its session signal and hydration reuse.
-- [ ] Load `/api/account` through Nuxt's SSR-safe request/data primitives. Session-dependent HTML must respect the incoming request without manual cookie forwarding or client-only workarounds.
-- [ ] Verify authenticated/guest refresh, revoked sessions and concurrent independent users: no hydration mismatch, protected-content flash or cross-request payload leakage. Runtime/HTTP coverage accompanies implementation; real browser coverage is completed in Phase 7.
-
-### 4. Apply authenticated-page and guest-page navigation rules.
-
-- [ ] Add named `app/middleware/auth.ts` and `app/middleware/guest.ts`, with minimal route shells as needed. `/account` requires auth; sign-in/register use guest rules.
-- [ ] Send guests to sign-in with a safe return destination and authenticated users away from guest forms to the safe destination or `/account`.
-- [ ] Await session resolution and distinguish transient lookup errors from guests. Return redirects correctly; provide retryable error behavior without redirect loops.
-- [ ] Keep verification/reset landing routes reachable with an existing session and leave native `/api/auth` endpoints outside page redirect rules. Middleware controls navigation UX; server authorization remains mandatory.
-
-### 5. Preserve safe return destinations.
-
-- [ ] Add the pure `shared/utils/safe-redirect.ts` helper. Accept a single local destination, preserve its safe query/hash and allow only application destinations (initially `/account` and `/`), falling back to `/account`.
-- [ ] Reject ambiguous/multiple values, external or protocol-relative URLs, schemes, backslashes, control characters and encoded normalization attacks. Reject auth-form routes, `/api/` and unsupported paths that could create loops.
-- [ ] Apply this contract to credential sign-in and registration return destinations. Carry it through verification only if safe; otherwise consistently use `/account`. Never navigate using a raw redirect query.
-- [ ] Cover accepted destinations and attack/loop cases in pure unit tests.
-
-### 6. Handle session loading, expiry and sign-out.
-
-- [ ] Distinguish pending/error states from resolved guests. On successful sign-out, use Better Auth's session invalidation, clear stale account-page data through Nuxt and navigate to sign-in; preserve identity and offer retry on failure.
-- [ ] Account 401 re-resolves authoritative identity and removes stale data; transient server failures remain distinct. Add resource-specific denial handling only for explicitly implemented authorization rules.
-- [ ] Verify expiry/revocation, sign-out from another tab, hard refresh and browser back behavior. Once revocation is observed, old account content must not remain visible.
+The [current-account endpoint](../authentication.md#current-account-endpoint-contract) and [session-aware navigation](../authentication.md#session-aware-navigation) provide the baseline for Phase 6. See [HTTP coverage](../testing.md#http-coverage) for the local acceptance boundary. Phase 7 adds automated browser coverage.
 
 <a id="phase-6"></a>
 
@@ -114,13 +39,14 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 
 ### 1. Build registration and credential sign-in.
 
-- [ ] Add `app/pages/register.vue` (name/email/password) and `app/pages/sign-in.vue` (email/password), using native Better Auth actions and the safe return contract.
+- [ ] Complete `app/pages/(auth)/register.vue` (name/email/password) and `app/pages/(auth)/sign-in.vue` (email/password), using native Better Auth actions and the [safe return contract](../authentication.md#session-aware-navigation).
 - [ ] Registration presents a generic check-email outcome consistent with the final server policy. Credential sign-in handles safe success destinations and native authentication errors.
+- [ ] Carry a validated return destination through verification when it can be preserved safely. Use `/account` as the fallback.
 - [ ] Provide working links between auth screens and home, semantic forms, appropriate autocomplete and no nested interactive elements or duplicate pending actions.
 
 ### 2. Build verification, resend and password recovery screens.
 
-- [ ] Add `app/pages/verify-email.vue`, `app/pages/forgot-password.vue` and `app/pages/reset-password.vue` using native verification/recovery flows. Better Auth owns token consumption; no custom verification endpoint is needed.
+- [ ] Complete `app/pages/(auth)/verify-email.vue`, `app/pages/(auth)/forgot-password.vue` and `app/pages/(auth)/reset-password.vue` using native verification and recovery flows. Better Auth owns token consumption.
 - [ ] Resend/recovery acknowledgements do not reveal whether an address exists or is already verified. Explain delivery uncertainty and offer usable retry paths without promising inbox receipt.
 - [ ] Validate link/query shape, handle missing/invalid/expired/used reset links and offer a fresh request. Reset success removes the sensitive token from the URL via replacement navigation and requires sign-in.
 - [ ] Keep these landing routes reachable with existing sessions. Never log or persist recovery/verification tokens in browser storage.
@@ -128,7 +54,7 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 ### 3. Add the protected account screen, display-name editing and sign-out.
 
 - [ ] Complete `/account` with SSR current-user data, name/email/verification display and navigation from `AppHeader.vue`.
-- [ ] Editing is display-name only; email stays read-only. Preserve the native `updateUser` operation and enforce the chosen name rule server-side through a supported narrow Better Auth extension point, without a profile proxy.
+- [ ] Implement the [profile edit contract](../authentication.md#profile-edits-through-better-auth) through native `updateUser` and enforce the chosen display-name rule server-side.
 - [ ] Refresh displayed session/account data only after confirmed success; preserve unsaved input on failure. Forged user selectors or verification fields cannot change another user's data or authority.
 - [ ] Use Phase 5 sign-out behavior. Email changes, deletion, uploads and linked-provider management remain outside scope.
 
@@ -147,10 +73,10 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 
 ### 6. Localize and verify accessibility.
 
-- [ ] Maintain equivalent English/Spanish auth, account, navigation and error messages. Preserve `no_prefix`, the `i18n_redirected` cookie and root-only browser-language detection.
+- [ ] Maintain equivalent auth, account, navigation and error messages across configured locales. Preserve the [locale selection policy](../i18n.md#locale-selection) on direct entries to the auth and account pages.
 - [ ] Language changes update visible errors without losing form values; SSR language agrees with hydration and no translated state leaks between requests.
 - [ ] Provide associated labels/descriptions/errors, accessible submit status, visible focus and first-invalid-field focus. Inline errors remain usable without toasts; preserve primitive keyboard/focus behavior.
-- [ ] Verify keyboard submission/tab order, menu dismissal/focus return, autofill/password managers and narrow viewports in both languages; fix discovered usability/accessibility failures.
+- [ ] Verify keyboard submission and tab order, menu dismissal and focus return, autofill and password managers, and narrow viewports in each configured locale. Fix discovered usability and accessibility failures.
 
 ### Cross-flow acceptance
 
@@ -179,7 +105,7 @@ Close remaining coverage gaps, add browser tests, automate migration reproducibi
 
 - [ ] Add compatible Playwright tooling with one supported Nuxt integration, the planned `test:browser` command and `test/browser/` cases. Happy-dom does not establish browser hydration or accessibility.
 - [ ] Run against a production-built server with isolated settings and reliable startup/teardown. Cover protected direct loads/refresh, sign-in/safe redirects, sign-out/back, cross-tab expiry/revocation and recovery links with an existing session.
-- [ ] Fail on hydration/page errors and private-data leakage across users or into guest HTML. Cover English/Spanish forms, labels, invalid-field focus and keyboard submission.
+- [ ] Fail on hydration/page errors and private-data leakage across users or into guest HTML. Cover forms, labels, invalid-field focus and keyboard submission in each configured locale.
 - [ ] Keep browser traces and failure artifacts free of credentials/tokens and apply short retention.
 
 ### 3. Automate empty-database migration and drift checks.
@@ -333,7 +259,7 @@ Make setup reproducible from a clean clone, finish canonical documentation and r
 
 ## Dependency chain
 
-Implemented foundation (Phases 1–3, 4.1–4.3) → endpoint authorization/input contract (4.4) → client sessions/page access (5) → email/password/account UI (6) → coverage/CI (7) → security controls/runbook (8) → final Preview acceptance and production release (9) → reproducibility/cleanup (10).
+Foundation and server authorization contract (Phases 1–4) → client sessions/page access (5) → email/password/account UI (6) → coverage/CI (7) → security controls/runbook (8) → final Preview acceptance and production release (9) → reproducibility/cleanup (10).
 
 Preview provisioning/provider acceptance may begin before Phase 8 is complete. Phase 8 prepares controls/runbooks; Phase 9 accepts them in the deployed environment. Phase 10 may share Phase 9's clean-checkout deployment evidence.
 
@@ -363,7 +289,9 @@ This planned extension is outside the mandatory scope of the first version. It d
 ## Planned maintenance
 
 - [ ] Migrate to Nuxt 5 / Nitro 3 once Nuxt 5 is stable and dependency/deployment compatibility is verified; see [Build performance on Windows](../../README.md#build-performance-on-windows).
-- [ ] During that migration, review server APIs and background execution, including whether a subsequently introduced serverless bridge can be removed ([ADR 005](../decisions/005-background-tasks.md)). Preserve the runtime configuration policy, lifecycle and sanitized-failure guarantees; revalidate affected deployed behavior.
+- [ ] Update the email startup plugin for the target Nitro plugin API. Preserve one-time initialization, prerender behavior and runtime configuration validation. Keep HTTP handlers on the portable `nuxt/server` APIs. See the [Nuxt upgrade guide](https://nuxt.com/docs/5.x/getting-started/upgrade#migration-to-nitro-v3).
+- [ ] Verify the chosen versions of i18n and Nuxt Test Utils in development and with the built server. The current i18n integration imports Nitro 2 and h3 v1 APIs, so verify its behavior with the chosen module version or Nuxt's module compatibility layer. Run the [HTTP suite](../testing.md#http-coverage) for the mounted Better Auth and Drizzle/Neon boundaries. Verify [locale selection](../i18n.md#locale-selection) and hydration in a browser.
+- [ ] Recheck the generated Vercel function runtime and background execution using the [Preview lifecycle test](../deployment.md#background-tasks). Preserve the [ADR 005](../decisions/005-background-tasks.md) guarantees and review the semantics of any cache, header or redirect route rules in use when migrating.
 
 ## Out of scope
 

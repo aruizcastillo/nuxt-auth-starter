@@ -8,13 +8,13 @@ Neon is the default PostgreSQL provider, but the database layer is structured so
 
 The current implementation includes the Better Auth server endpoint, auth schema, initial migration, and email verification and password recovery, using Resend as the reference email provider.
 
-The first version focuses on email/password, email verification, password recovery, sessions and server-side authorization. Sign-in and account pages, verification/recovery screens, protected application pages and the remaining authorization/security work are pending in the [roadmap](docs/roadmap/roadmap.md).
+The first version focuses on email/password, email verification, password recovery, sessions and server-side authorization. The starter includes session-aware navigation and a protected account page. Authentication forms, account editing and release validation are tracked in the [roadmap](docs/roadmap/roadmap.md).
 
-The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n. English and Spanish are currently configured.
+The frontend uses shadcn-vue, Tailwind CSS 4 and Nuxt i18n.
 
 ## Requirements
 
-- Node.js 24
+- Node.js 24.15 or newer
 - pnpm 12
 - PostgreSQL
 
@@ -97,7 +97,7 @@ pnpm auth:secret
 
 The CLI generates a `BETTER_AUTH_SECRET` entry. Copy its value into `NUXT_BETTER_AUTH_SECRET` in your `.env` file.
 
-For the included Resend transport, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Use a controlled recipient when testing; Resend's test sender restricts recipients. Both values are required when starting the production server. In Nuxt development, both may be empty to work without sending mail; partial or invalid settings fail initialization. Credentials stay enabled and require verification: registration without a transport can leave a pending account that cannot sign in. Auth schema tooling does not require email settings.
+Leave both email settings empty in local development to read verification and password-reset links in the server terminal. To send real email, configure a sending key and an authorized sender in [Resend](https://resend.com/docs/dashboard/domains/introduction). Both values are required when starting the production server. See [email configuration](docs/authentication.md#configuration-and-initialization) for validation and how to handle local links.
 
 Resend is the reference email provider. Other providers can be integrated by replacing the email transport and its configuration without changing Better Auth or background execution. See the [email transport boundary](docs/authentication.md#isolated-email-transport) for replacement details.
 
@@ -164,7 +164,7 @@ The current Neon implementation uses the HTTP driver for stateless, serverless-f
 
 Better Auth is exposed at `/api/auth` and stores users, sessions, accounts and verification records in PostgreSQL. Follow the environment and database setup above.
 
-See [authentication](docs/authentication.md) for credential verification, reset-session revocation and the session helper, [Phase 4](docs/roadmap/roadmap.md#phase-4) for pending endpoint authorization/input work, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real email/deployment acceptance.
+See [authentication](docs/authentication.md) for credential verification, account access and session-aware navigation, and [Phase 9](docs/roadmap/roadmap.md#phase-9) for real email and deployment acceptance.
 
 ## Development commands
 

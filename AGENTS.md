@@ -86,6 +86,8 @@ Do not reorganize tool-owned structures merely for architectural uniformity.
 
 Maintain Nuxt 4 / Nitro 2 until the planned Nuxt 5 / Nitro 3 migration meets the [roadmap's compatibility conditions](docs/roadmap/roadmap.md#planned-maintenance). Prefer official portable APIs such as `nuxt/server` when verified against the installed version. Prepare through compatible boundaries and targeted upgrade review, without adopting future-major APIs or starting the migration early.
 
+On Nuxt 4.6, import `defineEventHandler` and its portable request helpers together from `nuxt/server`. The `defineHandler` spelling is available from Nuxt 4.7, and Nitro 2 auto-imports use the h3 v1 event. See [Moving to nuxt/server](https://nuxt.com/docs/4.x/getting-started/upgrade#moving-to-nuxtserver).
+
 Use the standard boundaries:
 
 ```text

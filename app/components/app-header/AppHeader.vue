@@ -16,7 +16,7 @@ const { t } = useI18n()
         >
           <AppLogo
             aria-hidden="true"
-            width="3rem"
+            width="40px"
             height="auto"
           />
         </NuxtLink>

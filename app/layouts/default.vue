@@ -1,11 +1,11 @@
 <template>
-  <div class="flex flex-col">
-    <AppHeader class="pt-6 pb-[clamp(2rem,calc(13vw-5rem),4rem)]" />
+  <div class="flex min-h-dvh flex-col">
+    <AppHeader class="p-6" />
 
-    <main>
+    <main class="flex grow flex-col py-8 md:py-16">
       <slot />
     </main>
 
-    <AppFooter class="py-6 self-center" />
+    <AppFooter class="self-center p-6" />
   </div>
 </template>

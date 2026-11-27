@@ -29,7 +29,7 @@ async function onVerificationRequired(email: string) {
 <template>
   <UiPageContainer
     size="narrow"
-    centered
+    centered="x"
   >
     <UiCard class="w-full max-w-md">
       <UiCardHeader>

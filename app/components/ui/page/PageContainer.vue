@@ -5,6 +5,8 @@ type PageSize = 'sm' | 'md' | 'lg' | 'xl' | 'narrow' | 'default' | 'wide' | 'wid
 
 type PageGap = 'none' | 'sm' | 'md' | 'lg' | 'xl'
 
+type PageCentering = 'x' | 'y' | 'all'
+
 const sizeClasses: Record<PageSize, string> = {
   sm: 'max-w-xl',
   md: 'max-w-3xl',
@@ -25,11 +27,17 @@ const gapClasses: Record<PageGap, string> = {
   xl: 'gap-8',
 }
 
+const centeringClasses: Record<PageCentering, string> = {
+  x: 'items-center',
+  y: 'flex-1 justify-center',
+  all: 'flex-1 items-center justify-center',
+}
+
 const props = withDefaults(
   defineProps<{
     size?: PageSize
     gap?: PageGap
-    centered?: boolean
+    centered?: PageCentering | false
   }>(),
   {
     size: 'default',
@@ -43,7 +51,14 @@ const gapClass = computed(() => gapClasses[props.gap])
 </script>
 
 <template>
-  <div :class="['mx-auto flex w-full flex-1 flex-col px-4 pb-6 md:px-6 lg:px-8', sizeClass, gapClass, centered && 'items-center justify-center']">
+  <div
+    :class="[
+      'mx-auto flex w-full flex-col px-4 md:px-6 lg:px-8',
+      sizeClass,
+      gapClass,
+      centered && centeringClasses[centered],
+    ]"
+  >
     <slot />
   </div>
 </template>

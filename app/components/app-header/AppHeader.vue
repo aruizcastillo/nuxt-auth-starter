@@ -14,7 +14,11 @@ const { t } = useI18n()
           to="/"
           :aria-label="t('app.name')"
         >
-          <AppLogo aria-hidden="true" />
+          <AppLogo
+            aria-hidden="true"
+            width="3rem"
+            height="auto"
+          />
         </NuxtLink>
 
         <div class="flex items-center gap-1">

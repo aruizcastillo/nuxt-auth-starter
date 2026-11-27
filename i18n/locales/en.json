@@ -6,7 +6,7 @@
     "description": "A Nuxt starter with preconfigured authentication."
   },
   "home": { "greeting": "Hello Nuxt!" },
-  "navigation": { "main": "Main navigation" },
+  "navigation": { "main": "Main navigation", "home": "Home" },
   "common": {
     "language": "Language",
     "theme": "Theme",
@@ -14,10 +14,33 @@
   },
   "auth": {
     "signIn": "Sign in",
+    "signInDescription": "Enter your email and password to access your account.",
+    "signingIn": "Signing in…",
     "register": "Create an account",
+    "registerDescription": "Register with your email address.",
+    "registering": "Creating account…",
+    "name": "Name",
+    "email": "Email address",
+    "password": "Password",
+    "passwordLength": "Use {min} to {max} characters.",
+    "checkEmail": "Check your email",
+    "checkEmailDescription": "Check your inbox and spam folder for a verification link. Delivery can take a few minutes.",
     "verifyEmail": "Verify your email",
     "forgotPassword": "Forgot your password?",
-    "resetPassword": "Reset your password"
+    "resetPassword": "Reset your password",
+    "errors": {
+      "nameRequired": "Enter your name.",
+      "invalidEmail": "Enter a valid email address.",
+      "passwordRequired": "Enter your password.",
+      "passwordTooShort": "Use at least {min} characters.",
+      "passwordTooLong": "Use no more than {max} characters.",
+      "invalidCredentials": "The email address or password is incorrect.",
+      "emailNotVerified": "Verify your email before signing in.",
+      "rateLimited": "Too many attempts. Wait a moment and try again.",
+      "signInFailed": "We couldn’t sign you in. Try again.",
+      "registrationFailed": "We couldn’t complete registration. Try again.",
+      "verificationLink": "This verification link is invalid or has expired."
+    }
   },
   "account": {
     "title": "Your account",

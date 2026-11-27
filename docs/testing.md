@@ -14,9 +14,13 @@ Run lint and typecheck when relevant to the change. The full suite builds its ow
 
 ## Test projects
 
-`vitest.config.ts` defines `unit` (Node, pure configuration and auth-boundary tests), `nuxt` (Nuxt runtime via `defineVitestProject`, currently no cases), and `e2e` (Node plus `@nuxt/test-utils/e2e`, a real built Nitro server). The lockfile resolves Vitest 4.1.11 and Nuxt Test Utils 4.3.3. No browser harness, coverage gate or required CI workflow is implemented.
+`vitest.config.ts` defines `unit` (Node, pure configuration and auth-boundary tests), `nuxt` (Nuxt runtime via `defineVitestProject`), and `e2e` (Node plus `@nuxt/test-utils/e2e`, a real built Nitro server). The lockfile resolves Vitest 4.1.11 and Nuxt Test Utils 4.3.3. No browser harness, coverage gate or required CI workflow is implemented.
 
 Use the [README command table](../README.md#development-commands) for lint, typecheck, unit tests and build. `pnpm test:run` includes database mutations; it requires the explicit disposable target below. Missing infrastructure fails rather than silently skipping the suite. No Markdown-specific validation script exists.
+
+## Credential form coverage
+
+`pnpm test:run --project nuxt` mounts the credential forms with real field components, validation and localization. The native auth client is mocked at the request boundary. Cases cover field errors and focus, password bounds and whitespace, duplicate submits, retryable failures and the generic registration confirmation.
 
 ## Email transport coverage
 
@@ -28,7 +32,7 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 `test/e2e/auth-server.test.ts` builds and starts Nitro against the explicitly allowlisted disposable database. The suite registers its own email fixture. The fixture plugin runs before the application's scanned startup plugin, so the initialized sender captures only intercepted provider fetch.
 
-Credential tests cover validation, bounds, native normalization/hash persistence, generic duplicate registration, cookie attributes, expiry and sign-out. Successful credential sessions follow captured native verification links; database flags are never used to bypass verification. Registration and verification create no session; sign-in before verification returns 403.
+Credential tests cover validation, bounds, native normalization/hash persistence, generic duplicate registration, cookie attributes, expiry and sign-out. Successful credential sessions follow captured native verification links; database flags are never used to bypass verification. The registration callback returns to the sign-in page with the requested destination, including its query and fragment. The suite checks the invalid-link notice and account fallback. Registration and verification create no session; sign-in before verification returns 403.
 
 The key Node lifecycle test blocks the transport, receives signup/resend HTTP acknowledgements with provider work still pending, then releases and observes acceptance. Recovery uses captured single-use links and checks all earlier sessions are revoked, the old password fails and new sign-in succeeds. Provider rejection and a real ten-second timeout preserve generic recovery responses and allow subsequent verification. Unit transport tests retain the other error classifications.
 
@@ -36,7 +40,7 @@ The mounted `/api/account` tests cover guest, expired and revoked sessions, forg
 
 The SSR tests request the account page for two independent users and a guest concurrently, with a Vercel-style inferred URL present. They check private cache headers, session-token exclusion from the HTML, redirects and access to public verification and recovery routes. Unit tests cover the shared redirect policy.
 
-The separate development fixture boots real Nuxt without either provider setting. It registers an account, checks that sign-in is blocked before verification, then completes verification and password reset through the native links printed to the server's terminal. The e2e project runs files sequentially because development startup regenerates root `.nuxt` types while the production fixture compiles against them.
+The separate development fixture boots real Nuxt without either provider setting. It registers an account, checks that sign-in is blocked before verification, then completes verification and password reset through the native links printed to the server's terminal. The e2e project runs files sequentially because development startup regenerates root `.nuxt` types while the production fixture compiles against them. Run the suite in a checkout without an active Nuxt development server so the fixture can acquire the project lock.
 
 Native production rate limiting stays enabled. The POST helper honors its actual retry header once and fails if rejected again. Longer email-case deadlines allow that backoff; they do not relax assertions. Cold Windows builds retain the ten-minute setup allowance.
 

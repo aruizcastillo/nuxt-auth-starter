@@ -286,9 +286,11 @@ describe('mounted Better Auth server', () => {
 describe('mounted verification and recovery', () => {
   it('finishes HTTP before provider acceptance and requires explicit sign-in after verification', async () => {
     const credentials = fixtures.credentials()
+    const destination = '/account?tab=profile&tab=security#display-name'
+    const callbackURL = `/sign-in?${new URLSearchParams({ redirect: destination })}`
     await emailControl(credentials.email, 'configure', 'pending')
     try {
-      const signup = await post('sign-up/email', credentials)
+      const signup = await post('sign-up/email', { ...credentials, callbackURL })
       expect(signup.status).toBe(200)
       expect(await signup.json()).toMatchObject({ token: null, user: { emailVerified: false } })
       noSessionCookie(signup)
@@ -308,11 +310,37 @@ describe('mounted verification and recovery', () => {
       const verified = await followLink(text)
       expect(verified.status).toBe(302)
       noSessionCookie(verified)
+      const location = verified.headers.get('location')
+      expect(location).toBe(callbackURL)
+      const landing = await fetch(callbackURL)
+      expect(landing.status).toBe(200)
+      const signInHTML = await landing.text()
+      expect(signInHTML).toContain('autocomplete="current-password"')
+      expect(signInHTML).not.toContain('This verification link is invalid or has expired.')
+      expect(new URL(location!, origin).searchParams.get('redirect')).toBe(destination)
       expect(await getSession()).toBeNull()
+
+      const invalidLink = emailURL(text)
+      invalidLink.searchParams.set('token', 'tampered-token')
+      const invalid = await fetch(`${invalidLink.pathname}${invalidLink.search}`, { redirect: 'manual' })
+      expect(invalid.status).toBe(302)
+      noSessionCookie(invalid)
+      const errorLocation = new URL(invalid.headers.get('location')!, origin)
+      expect(errorLocation.pathname).toBe('/sign-in')
+      expect(errorLocation.searchParams.get('redirect')).toBe(destination)
+      expect(errorLocation.searchParams.get('error')).toBe('INVALID_TOKEN')
+      expect(await (await fetch(`${errorLocation.pathname}${errorLocation.search}`)).text()).toContain('This verification link is invalid or has expired.')
+
       const replay = await followLink(text)
       expect(replay.status).toBe(302)
       noSessionCookie(replay)
-      expect((await post('sign-in/email', credentials)).status).toBe(200)
+      const cookie = sessionCookie(await post('sign-in/email', credentials))
+      expect(sessionResponse.parse(await getSession(cookie)).user.email).toBe(credentials.email)
+      const fallback = await fetch('/sign-in?redirect=https://elsewhere.example/', {
+        redirect: 'manual',
+        headers: { cookie },
+      })
+      expect(fallback.headers.get('location')).toBe('/account')
     }
     finally {
       await emailControl(credentials.email, 'release')

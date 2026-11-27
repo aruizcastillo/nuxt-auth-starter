@@ -6,7 +6,7 @@
     "description": "Una plantilla de Nuxt con autenticación preconfigurada."
   },
   "home": { "greeting": "¡Hola, Nuxt!" },
-  "navigation": { "main": "Navegación principal" },
+  "navigation": { "main": "Navegación principal", "home": "Inicio" },
   "common": {
     "language": "Idioma",
     "theme": "Tema",
@@ -14,10 +14,33 @@
   },
   "auth": {
     "signIn": "Iniciar sesión",
+    "signInDescription": "Introduce tu correo y tu contraseña para acceder a tu cuenta.",
+    "signingIn": "Iniciando sesión…",
     "register": "Crear una cuenta",
+    "registerDescription": "Regístrate con tu dirección de correo electrónico.",
+    "registering": "Creando la cuenta…",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "passwordLength": "Usa entre {min} y {max} caracteres.",
+    "checkEmail": "Revisa tu correo",
+    "checkEmailDescription": "Busca el enlace de verificación en tu bandeja de entrada y en la carpeta de correo no deseado. El correo puede tardar unos minutos.",
     "verifyEmail": "Verifica tu correo",
     "forgotPassword": "¿Has olvidado tu contraseña?",
-    "resetPassword": "Restablece tu contraseña"
+    "resetPassword": "Restablece tu contraseña",
+    "errors": {
+      "nameRequired": "Introduce tu nombre.",
+      "invalidEmail": "Introduce un correo electrónico válido.",
+      "passwordRequired": "Introduce tu contraseña.",
+      "passwordTooShort": "Usa al menos {min} caracteres.",
+      "passwordTooLong": "Usa como máximo {max} caracteres.",
+      "invalidCredentials": "El correo electrónico o la contraseña son incorrectos.",
+      "emailNotVerified": "Verifica tu correo antes de iniciar sesión.",
+      "rateLimited": "Demasiados intentos. Espera un momento y vuelve a intentarlo.",
+      "signInFailed": "No se pudo iniciar sesión. Vuelve a intentarlo.",
+      "registrationFailed": "No se pudo completar el registro. Vuelve a intentarlo.",
+      "verificationLink": "Este enlace de verificación no es válido o ha caducado."
+    }
   },
   "account": {
     "title": "Tu cuenta",

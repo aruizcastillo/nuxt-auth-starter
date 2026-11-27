@@ -37,13 +37,6 @@ Deliver localized, accessible authentication/account screens with meaningful beh
 - Phases 4–5 server/session/navigation contracts pass locally. Preserve their routes, middleware and safe-return helper.
 - Screens use the existing shadcn-vue/Reka components, page container, toaster, vee-validate + Zod and i18n configuration.
 
-### 1. Build registration and credential sign-in.
-
-- [ ] Complete `app/pages/(auth)/register.vue` (name/email/password) and `app/pages/(auth)/sign-in.vue` (email/password), using native Better Auth actions and the [safe return contract](../authentication.md#session-aware-navigation).
-- [ ] Registration presents a generic check-email outcome consistent with the final server policy. Credential sign-in handles safe success destinations and native authentication errors.
-- [ ] Carry a validated return destination through verification when it can be preserved safely. Use `/account` as the fallback.
-- [ ] Provide working links between auth screens and home, semantic forms, appropriate autocomplete and no nested interactive elements or duplicate pending actions.
-
 ### 2. Build verification, resend and password recovery screens.
 
 - [ ] Complete `app/pages/(auth)/verify-email.vue`, `app/pages/(auth)/forgot-password.vue` and `app/pages/(auth)/reset-password.vue` using native verification and recovery flows. Better Auth owns token consumption.

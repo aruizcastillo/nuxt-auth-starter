@@ -28,6 +28,12 @@ export default defineNuxtConfig({
     resendApiKey: '',
     emailFrom: '',
   },
+
+  routeRules: {
+    '/reset-password': {
+      headers: { 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' },
+    },
+  },
   compatibilityDate: '2025-07-15',
 
   nitro: {

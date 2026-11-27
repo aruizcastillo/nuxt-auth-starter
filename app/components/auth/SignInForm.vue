@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { maxPasswordLength } from '#shared/validation/auth'
 import { authClient } from '~/lib/auth-client'
 
-const emit = defineEmits<{ success: [] }>()
+const emit = defineEmits<{ success: [], verificationRequired: [email: string] }>()
 const { t } = useI18n()
 const id = useId()
 const form = useTemplateRef<HTMLFormElement>('form')
@@ -29,8 +29,9 @@ const submitCredentials = handleSubmit(async (credentials) => {
           formError.value = 'auth.errors.invalidCredentials'
           break
         case 'EMAIL_NOT_VERIFIED':
-          formError.value = 'auth.errors.emailNotVerified'
-          break
+          resetForm()
+          emit('verificationRequired', credentials.email)
+          return
         default:
           formError.value = error?.status === 429 ? 'auth.errors.rateLimited' : 'auth.errors.signInFailed'
       }

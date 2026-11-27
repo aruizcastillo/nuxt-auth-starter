@@ -5,7 +5,7 @@ import { maxPasswordLength, minPasswordLength } from '#shared/validation/auth'
 import { authClient } from '~/lib/auth-client'
 
 const props = defineProps<{ callbackURL: string }>()
-const emit = defineEmits<{ success: [] }>()
+const emit = defineEmits<{ success: [email: string] }>()
 const { t } = useI18n()
 const id = useId()
 const form = useTemplateRef<HTMLFormElement>('form')
@@ -37,7 +37,7 @@ const submitRegistration = handleSubmit(async (credentials) => {
   }
 
   resetForm()
-  emit('success')
+  emit('success', credentials.email)
 }, async () => {
   await nextTick()
   form.value?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus()

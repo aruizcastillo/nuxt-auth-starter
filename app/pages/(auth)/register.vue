@@ -5,15 +5,14 @@ definePageMeta({ middleware: 'guest' })
 
 const route = useRoute()
 const router = useRouter()
-const signInLink = computed(() => ({ path: '/sign-in', query: { redirect: safeRedirect(route.query.redirect) } }))
+const verificationEmail = useVerificationEmail()
+const destination = computed(() => safeRedirect(route.query.redirect))
+const signInLink = computed(() => ({ path: '/sign-in', query: { redirect: destination.value } }))
 const callbackURL = computed(() => router.resolve(signInLink.value).fullPath)
-const registered = ref(false)
-const heading = useTemplateRef<HTMLHeadingElement>('heading')
 
-async function onSuccess() {
-  registered.value = true
-  await nextTick()
-  heading.value?.focus()
+async function onSuccess(email: string) {
+  verificationEmail.value = email
+  await navigateTo({ path: '/verify-email', query: { redirect: destination.value } })
 }
 </script>
 
@@ -24,24 +23,16 @@ async function onSuccess() {
   >
     <UiCard class="w-full max-w-md">
       <UiCardHeader>
-        <h1
-          ref="heading"
-          class="text-2xl font-semibold"
-          :tabindex="registered ? -1 : undefined"
-        >
-          {{ $t(registered ? 'auth.checkEmail' : 'auth.register') }}
+        <h1 class="text-2xl font-semibold">
+          {{ $t('auth.register') }}
         </h1>
-        <UiCardDescription v-if="!registered">
+        <UiCardDescription>
           {{ $t('auth.registerDescription') }}
         </UiCardDescription>
       </UiCardHeader>
 
       <UiCardContent>
-        <p v-if="registered">
-          {{ $t('auth.checkEmailDescription') }}
-        </p>
         <AuthRegisterForm
-          v-else
           :callback-u-r-l="callbackURL"
           @success="onSuccess"
         />

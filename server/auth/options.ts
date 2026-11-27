@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from '@better-auth/drizzle-adapter/relations-v2'
+import { maxPasswordLength, minPasswordLength } from '../../shared/validation/auth'
 import type { Database } from '../database'
 import { authTables } from '../database/schema'
 import type { parseAuthConfig } from './config'
@@ -19,8 +20,8 @@ export function createAuth(settings: ReturnType<typeof parseAuthConfig>, databas
     basePath: '/api/auth',
     emailAndPassword: {
       enabled: true,
-      minPasswordLength: 8,
-      maxPasswordLength: 128,
+      minPasswordLength,
+      maxPasswordLength,
       requireEmailVerification: true,
       revokeSessionsOnPasswordReset: true,
       ...(sendEmail && {

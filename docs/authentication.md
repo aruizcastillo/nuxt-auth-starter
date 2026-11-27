@@ -47,9 +47,23 @@ The same-origin Vue client uses Better Auth's [`useSession(useFetch)` integratio
 
 The `auth` middleware protects `/account`. The `guest` middleware redirects authenticated users away from `/sign-in` and `/register`. Both set private, no-store headers on server-rendered responses and redirects. A session lookup failure surfaces a retryable error. Verification and password recovery pages remain reachable regardless of session state.
 
-The optional `redirect` query accepts a single local destination. `safeRedirect()` allows `/` and `/account`, preserves valid query strings and fragments, and otherwise defaults to `/account`. Credential forms use that same contract when implemented in [Phase 6](roadmap/roadmap.md#phase-6).
+The optional `redirect` query accepts a single local destination. `safeRedirect()` allows `/` and `/account`, preserves valid query strings and fragments, and otherwise defaults to `/account`. The links between the credential screens preserve the validated destination.
 
 The account view subscribes to Better Auth's native Vue session observer in the browser. This activates the library's focus and cross-tab listeners. An observed revocation or an account `401` clears the account and navigation data before returning to sign-in, where the native session check resolves current access. Successful native sign-out also clears the view. An error returned to the browser leaves the current account view available for a retry. Better Auth can clear the browser cookie after logging a database deletion failure, so verify database revocation by testing the previous session against the protected endpoint.
+
+### Credential screens
+
+`/register` and `/sign-in` compose their cards and navigation in the page. Their forms own vee-validate state, local Zod validation and native Better Auth requests. Password bounds are shared with the server configuration. Sign-in checks for a nonempty password within the maximum length, while registration also enforces the minimum.
+
+Registration sends new and duplicate accounts to the same verification screen. Sign-in routes there when Better Auth returns `EMAIL_NOT_VERIFIED`. After successful credential sign-in, the page invalidates the navigation session data and replaces the current history entry with the validated destination.
+
+### Verification and password recovery screens
+
+`/verify-email` pre-fills the email address from the preceding registration or sign-in using one-time client memory. Direct visits and reloads start with an empty field. The verification and recovery request forms use native `sendVerificationEmail` and `requestPasswordReset`. Both acknowledge accepted requests generically, permit manual retries and honor the native retry interval on HTTP 429.
+
+Verification links return to `/sign-in` with the validated destination. A recognized verification-link error offers a way to request a new link. A signed-in visitor can open the verification page and return to Account.
+
+Recovery links land on `/reset-password`. The page checks the query shape, serves a private, no-store response with `Referrer-Policy: no-referrer` and sends the token and the new password in the native request body. The confirmation field stays in the form. On this route, remove Nuxt 4.6's copy of the token-bearing request URL from the hydration payload. The client router reads the browser URL. Invalid, expired and used tokens lead back to the recovery request. After success, the page replaces the current URL with its token-free form and offers a fresh sign-in. If a session remains active after the reset, the person can visit Account to switch accounts.
 
 ### Profile edits through Better Auth
 
@@ -68,7 +82,9 @@ A synchronous Nitro plugin initializes the email transport once per runtime from
 | Nuxt development, partial or invalid settings | Fail initialization with a sanitized configuration error. |
 | Production server, including Preview | Require valid provider settings at initialization. |
 
-The development transport writes the recipient, purpose and plain-text message with its complete native link directly to the server's standard output. Use it in a local terminal and keep that output private. Open the printed link to complete the normal Better Auth verification or recovery flow. After changing provider settings, restart the runtime to initialize the transport.
+The development transport writes the recipient, purpose and plain-text message with its complete native link directly to the server's standard output. Start `pnpm dev --no-tui` to stream the output and look for `[auth-email:development]` after submitting a new registration, verification resend or password reset request. The interactive terminal folds output into its log history. [Nuxt dev command](https://nuxt.com/docs/4.x/api/commands/dev#disabling-the-ui)
+
+Use **Resend verification email** on `/verify-email` to request another link for an unverified address. Duplicate registration returns the generic confirmation without triggering a send. Keep the local terminal output private and open the printed link to complete verification or recovery. Restart the runtime after changing provider settings.
 
 ### Verification and recovery delivery
 

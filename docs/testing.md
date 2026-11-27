@@ -20,7 +20,7 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 ## Credential form coverage
 
-`pnpm test:run --project nuxt` mounts the credential forms with real field components, validation and localization. The native auth client is mocked at the request boundary. Cases cover field errors and focus, password bounds and whitespace, duplicate submits, retryable failures and the generic registration confirmation.
+`pnpm test:run --project nuxt` mounts the auth pages and forms with real field components, validation and localization. Mutation responses are mocked at the native auth client boundary. Cases cover field errors and focus, password bounds and whitespace, transitions to verification, one-time email prefill, generic email acknowledgements, duplicate submits, the HTTP 429 retry interval, password confirmation and token removal after reset.
 
 ## Email transport coverage
 
@@ -34,7 +34,7 @@ Use the [README command table](../README.md#development-commands) for lint, type
 
 Credential tests cover validation, bounds, native normalization/hash persistence, generic duplicate registration, cookie attributes, expiry and sign-out. Successful credential sessions follow captured native verification links; database flags are never used to bypass verification. The registration callback returns to the sign-in page with the requested destination, including its query and fragment. The suite checks the invalid-link notice and account fallback. Registration and verification create no session; sign-in before verification returns 403.
 
-The key Node lifecycle test blocks the transport, receives signup/resend HTTP acknowledgements with provider work still pending, then releases and observes acceptance. Recovery uses captured single-use links and checks all earlier sessions are revoked, the old password fails and new sign-in succeeds. Provider rejection and a real ten-second timeout preserve generic recovery responses and allow subsequent verification. Unit transport tests retain the other error classifications.
+The key Node lifecycle test blocks the transport, receives signup/resend HTTP acknowledgements with provider work still pending, then releases and observes acceptance. It compares anonymous resend acknowledgements for pending, verified and unknown addresses. Recovery covers the SSR response for a reset link, expired and used callbacks, revocation of earlier sessions for the affected account and preservation of an unrelated session. The previous password fails and the new password allows sign-in. Provider rejection and a real ten-second timeout preserve generic recovery responses and allow subsequent verification. Unit transport tests retain the other error classifications.
 
 The mounted `/api/account` tests cover guest, expired and revoked sessions, forged headers, exact user projection, invalid queries and private cache headers. The verification-policy regression uses a real unverified session created with a test-specific Better Auth configuration. A unit check covers lookup-error propagation.
 

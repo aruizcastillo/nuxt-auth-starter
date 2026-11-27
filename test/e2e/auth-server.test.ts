@@ -9,7 +9,7 @@ import { verifyPassword } from 'better-auth/crypto'
 import { createEmailVerificationToken } from 'better-auth/api'
 import { z } from 'zod'
 import { authFixtures, testDatabase } from '../helpers/auth'
-import { account, session, user } from '../../server/database/schema/auth'
+import { account, session, user, verification } from '../../server/database/schema/auth'
 import { createAuth } from '../../server/auth/options'
 import { parseAuthConfig } from '../../server/auth/config'
 
@@ -299,14 +299,14 @@ describe('mounted verification and recovery', () => {
       expect(unverified.status).toBe(403)
       expect(await unverified.json()).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' })
       noSessionCookie(unverified)
-      const resend = await post('send-verification-email', { email: credentials.email, callbackURL: `${origin}/` })
+      const resend = await post('send-verification-email', { email: credentials.email, callbackURL })
       expect(resend.status).toBe(200)
       expect(await resend.json()).toEqual({ status: true })
       await expect.poll(async () => (await emailControl(credentials.email)).length).toBe(2)
       expect((await emailControl(credentials.email)).every(message => message.status === 'pending')).toBe(true)
       await emailControl(credentials.email, 'release')
       await expect.poll(async () => (await emailControl(credentials.email)).every(message => message.status === 'accepted')).toBe(true)
-      const text = (await emailControl(credentials.email))[0]!.text
+      const text = (await emailControl(credentials.email))[1]!.text
       const verified = await followLink(text)
       expect(verified.status).toBe(302)
       noSessionCookie(verified)
@@ -329,13 +329,28 @@ describe('mounted verification and recovery', () => {
       expect(errorLocation.pathname).toBe('/sign-in')
       expect(errorLocation.searchParams.get('redirect')).toBe(destination)
       expect(errorLocation.searchParams.get('error')).toBe('INVALID_TOKEN')
-      expect(await (await fetch(`${errorLocation.pathname}${errorLocation.search}`)).text()).toContain('This verification link is invalid or has expired.')
+      const invalidHTML = await (await fetch(`${errorLocation.pathname}${errorLocation.search}`)).text()
+      expect(invalidHTML).toContain('This verification link is invalid or has expired.')
+      expect(invalidHTML).toContain('href="/verify-email?redirect=')
 
       const replay = await followLink(text)
       expect(replay.status).toBe(302)
       noSessionCookie(replay)
       const cookie = sessionCookie(await post('sign-in/email', credentials))
       expect(sessionResponse.parse(await getSession(cookie)).user.email).toBe(credentials.email)
+      const signedInVerification = await fetch('/verify-email', { headers: { cookie } })
+      expect(signedInVerification.status).toBe(200)
+      expect(await signedInVerification.text()).toContain('Go to your account')
+
+      const unknown = fixtures.credentials().email
+      for (const email of [credentials.email, unknown]) {
+        const acknowledged = await post('send-verification-email', { email, callbackURL })
+        expect(acknowledged.status).toBe(200)
+        expect(await acknowledged.json()).toEqual({ status: true })
+        noSessionCookie(acknowledged)
+      }
+      expect((await emailControl(credentials.email)).length).toBe(2)
+      expect(await emailControl(unknown)).toEqual([])
       const fallback = await fetch('/sign-in?redirect=https://elsewhere.example/', {
         redirect: 'manual',
         headers: { cookie },
@@ -363,36 +378,74 @@ describe('mounted verification and recovery', () => {
     expect(rows[0]?.emailVerified).toBe(false)
   })
 
-  it('recovers by a single-use link and revokes every previous session', async () => {
+  it('recovers by a single-use link and revokes every previous session of the target account', async () => {
     const credentials = fixtures.credentials()
+    const other = fixtures.credentials()
     const first = sessionCookie(await verifiedSignUp(credentials))
     const second = sessionCookie(await post('sign-in/email', credentials))
+    const otherCookie = sessionCookie(await verifiedSignUp(other))
+    const targetId = sessionResponse.parse(await getSession(first)).user.id
+    const returnTo = '/account?tab=profile#name'
+    const redirectTo = `/reset-password?${new URLSearchParams({ redirect: returnTo })}`
     await emailControl(credentials.email, 'configure', 'pending')
     try {
-      const reset = await post('request-password-reset', { email: credentials.email, redirectTo: `${origin}/reset-password` })
+      const reset = await post('request-password-reset', { email: credentials.email, redirectTo })
       expect(reset.status).toBe(200)
       noSessionCookie(reset)
       await expect.poll(async () => (await emailControl(credentials.email)).at(-1)?.status).toBe('pending')
       await emailControl(credentials.email, 'release')
       await expect.poll(async () => (await emailControl(credentials.email)).at(-1)?.status).toBe('accepted')
-      const callback = await followLink((await emailControl(credentials.email)).at(-1)!.text)
+      const text = (await emailControl(credentials.email)).at(-1)!.text
+      const callback = await followLink(text)
       expect(callback.status).toBe(302)
       const destination = new URL(callback.headers.get('location')!)
       expect(destination.origin === origin && destination.pathname === '/reset-password').toBe(true)
-      const body = { token: destination.searchParams.get('token'), newPassword: 'changed-password-123' }
-      const changed = await post('reset-password', body)
+      expect(destination.searchParams.get('redirect')).toBe(returnTo)
+      const token = destination.searchParams.get('token')
+      if (!token) throw new Error('Missing token in the native reset callback')
+      const body = { token, newPassword: 'changed-password-123' }
+      const landing = await fetch(`${destination.pathname}${destination.search}`, { headers: { cookie: otherCookie } })
+      expect(landing.status).toBe(200)
+      expect(landing.headers.get('cache-control')).toBe('private, no-store')
+      expect(landing.headers.get('referrer-policy')).toBe('no-referrer')
+      const landingHTML = await landing.text()
+      expect(landingHTML).toContain('autocomplete="new-password"')
+      expect(landingHTML.includes(token), 'Reset token must stay out of the SSR HTML').toBe(false)
+
+      const changed = await post('reset-password', body, otherCookie)
       expect(changed.status).toBe(200)
       noSessionCookie(changed)
       expect(await getSession(first)).toBeNull()
       expect(await getSession(second)).toBeNull()
+      expect(sessionResponse.parse(await getSession(otherCookie)).user.email).toBe(other.email)
       expect((await post('reset-password', body)).status).toBe(400)
       expect((await post('sign-in/email', credentials)).status).toBe(401)
       expect((await post('sign-in/email', { ...credentials, password: body.newPassword })).status).toBe(200)
+
+      const expiredToken = randomBytes(12).toString('hex')
+      await target.db.insert(verification).values({
+        id: randomBytes(16).toString('hex'),
+        identifier: `reset-password:${expiredToken}`,
+        value: targetId,
+        expiresAt: new Date(0),
+      })
+      const expiredURL = emailURL(text)
+      expiredURL.pathname = `/api/auth/reset-password/${expiredToken}`
+      const expired = await fetch(`${expiredURL.pathname}${expiredURL.search}`, { redirect: 'manual' })
+      const reused = await followLink(text)
+      for (const response of [expired, reused]) {
+        expect(response.status).toBe(302)
+        const errorLocation = new URL(response.headers.get('location')!)
+        expect(errorLocation.pathname).toBe('/reset-password')
+        expect(errorLocation.searchParams.get('error')).toBe('INVALID_TOKEN')
+        expect(errorLocation.searchParams.get('token')).toBeNull()
+        expect(await (await fetch(`${errorLocation.pathname}${errorLocation.search}`)).text()).toContain('Request a new reset link')
+      }
     }
     finally {
       await emailControl(credentials.email, 'release')
     }
-  }, 90_000)
+  }, 150_000)
 
   it.each(['rate_limit', 'pending'])('keeps recovery generic after provider %s and permits recovery later', async (mode) => {
     const credentials = fixtures.credentials()

@@ -252,7 +252,7 @@ describe('verification and recovery forms', () => {
     await form.trigger('submit')
     await vi.waitFor(() => expect(wrapper.get('h1').text()).toBe('Password updated'))
     const link = anotherSession ? '/account' : '/sign-in?redirect=/'
-    await vi.waitFor(() => expect(wrapper.get(`a[href="${link}"]`).exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find(`a[href="${link}"]`).exists()).toBe(true))
     const request = { token: 'fixture', newPassword: password, fetchOptions: expect.any(Object) }
     expect(resetPassword).toHaveBeenCalledExactlyOnceWith(request)
     expect(router.currentRoute.value.query).toEqual({ redirect: '/' })
@@ -271,7 +271,7 @@ describe('verification and recovery forms', () => {
 
     await vi.waitFor(() => expect(router.currentRoute.value.query).toEqual({ redirect: '/account' }))
     expect(wrapper.get('[role="alert"]').text()).toContain('Request a new link')
-    expect(wrapper.get('a[href^="/forgot-password"]').exists()).toBe(true)
+    expect(wrapper.find('a[href^="/forgot-password"]').exists()).toBe(true)
     expect(getSession).not.toHaveBeenCalled()
   })
 })

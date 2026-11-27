@@ -11,6 +11,11 @@ const completed = ref(false)
 const signedIn = ref(false)
 const checkingSession = ref(false)
 
+if (import.meta.server && route.query.token !== undefined) {
+  // Nuxt 4.6 serializes the request URL here. The client router can read the browser URL.
+  delete nuxtApp.payload.path
+}
+
 useHead({ meta: [{ name: 'referrer', content: 'no-referrer' }] })
 
 const token = computed(() => {

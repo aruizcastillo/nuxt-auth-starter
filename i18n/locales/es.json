@@ -36,7 +36,7 @@
     "sendResetLink": "Enviar enlace de restablecimiento",
     "requestResetLink": "Solicitar un nuevo enlace de restablecimiento",
     "requestingEmail": "Solicitando correo…",
-    "emailRequestAccepted": "Revisa tu correo",
+    "emailRequestAccepted": "Solicitud recibida",
     "emailRequestDescription": "Si se puede enviar un enlace a esa dirección, búscalo en la bandeja de entrada o en el correo no deseado. El correo puede tardar unos minutos.",
     "resetPassword": "Restablece tu contraseña",
     "resetPasswordDescription": "Introduce y confirma tu nueva contraseña.",
@@ -46,7 +46,7 @@
     "resettingPassword": "Guardando la nueva contraseña…",
     "passwordResetComplete": "Contraseña actualizada",
     "passwordResetCompleteDescription": "Inicia sesión con tu nueva contraseña para continuar.",
-    "passwordResetSwitchAccount": "Hay otra cuenta con sesión iniciada. Ve a tu cuenta y cierra la sesión para iniciar sesión con tu nueva contraseña.",
+    "passwordResetSwitchAccount": "Hay una sesión activa. Ve a tu cuenta y cierra la sesión para iniciar sesión con tu nueva contraseña.",
     "errors": {
       "nameRequired": "Introduce tu nombre.",
       "invalidEmail": "Introduce un correo electrónico válido.",
@@ -60,7 +60,7 @@
       "verificationLink": "Este enlace de verificación no es válido o ha caducado.",
       "emailRequestFailed": "No se pudo procesar la solicitud. Vuelve a intentarlo.",
       "passwordMismatch": "Las contraseñas deben coincidir.",
-      "resetLink": "El enlace falta, no es válido, ha caducado o ya se ha usado. Solicita uno nuevo para continuar.",
+      "resetLink": "Este enlace no es válido, ha caducado o ya se ha usado. Solicita uno nuevo para continuar.",
       "resetFailed": "No se pudo confirmar el cambio de contraseña. Vuelve a intentarlo o solicita otro enlace."
     }
   },

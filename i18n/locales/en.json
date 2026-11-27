@@ -36,7 +36,7 @@
     "sendResetLink": "Send reset link",
     "requestResetLink": "Request a new reset link",
     "requestingEmail": "Requesting email…",
-    "emailRequestAccepted": "Check your email",
+    "emailRequestAccepted": "Request received",
     "emailRequestDescription": "If a link can be sent to that address, check your inbox and spam folder. Delivery can take a few minutes.",
     "resetPassword": "Reset your password",
     "resetPasswordDescription": "Enter and confirm your new password.",
@@ -46,7 +46,7 @@
     "resettingPassword": "Saving new password…",
     "passwordResetComplete": "Password updated",
     "passwordResetCompleteDescription": "Sign in with your new password to continue.",
-    "passwordResetSwitchAccount": "Another account is signed in. Go to your account and sign out to sign in with your new password.",
+    "passwordResetSwitchAccount": "A session is still active. Go to your account and sign out to sign in with your new password.",
     "errors": {
       "nameRequired": "Enter your name.",
       "invalidEmail": "Enter a valid email address.",
